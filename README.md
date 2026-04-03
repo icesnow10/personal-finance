@@ -29,7 +29,7 @@ The `/fetch` skill uses [Pluggy](https://pluggy.ai) to pull bank transactions vi
 
 ### Step 2: Create a Developer account
 
-1. Go to [dashboard.pluggy.ai](https://dashboard.pluggy.ai) and register (includes a 15-day free trial)
+1. Go to [dashboard.pluggy.ai](https://dashboard.pluggy.ai) and register (includes a 15-day free trial — personal use is unlimited and free)
 2. Create a new application to get your `client_id` and `client_secret`
 
 ### Step 3: Link your MeuPluggy account to the Developer app
