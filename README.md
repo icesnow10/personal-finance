@@ -99,9 +99,6 @@ O `/fetch` aceita CSVs manuais como fallback. Coloque os arquivos em `resources/
 **Precisa rodar `/compile` todo mês?**
 Sim. Rode durante o mês para ter uma projeção (partial month com provisioning) e novamente após o fechamento para o relatório final com dados completos.
 
-**Os dados ficam onde?**
-Tudo fica local no diretório `resources/`. Nenhum dado é enviado para servidores externos além da API do Pluggy (que você já autorizou via Open Finance).
-
 ## Requirements
 
 - [Claude Code](https://claude.ai/claude-code) CLI
