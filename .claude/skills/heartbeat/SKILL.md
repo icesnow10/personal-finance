@@ -1,11 +1,11 @@
 ---
-name: sync
-description: Unattended sync of the current month's budget data. Fetches NEW transactions from Pluggy and appends them to existing data, then re-compiles the budget. Never overwrites existing classifications or user edits. Designed for scheduled triggers (cron) without user interaction. Use when scheduled or when the user asks to "sync", "refresh", or "update" the current month.
+name: heartbeat
+description: Periodic pulse for the current month. Fetches NEW transactions from Pluggy and appends them to existing data, then re-compiles the budget. Never overwrites existing classifications or user edits. Designed for scheduled triggers (cron) without user interaction. Use when scheduled or when the user asks to "heartbeat", "pulse", "refresh", or "update" the current month.
 ---
 
-# Sync — Incremental Monthly Budget Update
+# Heartbeat — Current Month Pulse
 
-Fetches **new** transactions since the last sync and appends them to existing data. Re-compiles the budget while preserving all prior classifications, user edits, and manual overrides. Runs fully unattended.
+Fetches **new** transactions since the last heartbeat and appends them to existing data. Re-compiles the budget while preserving all prior classifications, user edits, and manual overrides. Runs fully unattended.
 
 ## When to Use
 
@@ -67,13 +67,13 @@ In unattended mode, do NOT prompt for uncategorized transaction review. Instead:
 
 ### 7. Log summary
 
-Append to `resources/{YYYY-MM}/expenses/sync_log.md` (never overwrite previous entries):
+Append to `resources/{YYYY-MM}/expenses/heartbeat_log.md` (never overwrite previous entries):
 
 ```markdown
-## Sync — {YYYY-MM-DD HH:MM}
+## Heartbeat — {YYYY-MM-DD HH:MM}
 
 - Total transactions: {count}
-- New since last sync: {count} (+R$ {amount})
+- New since last heartbeat: {count} (+R$ {amount})
 - Income: R$ {total} ({provisional note if partial})
 - Expenses: R$ {total}
 - Net: R$ {net}
@@ -92,7 +92,7 @@ Also output the summary as your response so the schedule trigger captures it.
 | `resources/pluggy_items.json` | Read-only — never re-prompt for holder mapping |
 | Existing transaction classifications | Preserved — if already categorized, keep it |
 | User manual overrides | Preserved — never overwrite reclassifications |
-| Previous `sync_log.md` entries | Append-only — never delete prior log entries |
+| Previous `heartbeat_log.md` entries | Append-only — never delete prior log entries |
 
 ## What IS updated
 
@@ -100,7 +100,7 @@ Also output the summary as your response so the schedule trigger captures it.
 |---|---|
 | `transactions_raw.json` | New transactions appended (deduped by date+description+amount) |
 | `budget_*.json` | Regenerated with merged data (new + existing classifications) |
-| `sync_log.md` | New entry appended |
+| `heartbeat_log.md` | New entry appended |
 
 ## Rules
 
@@ -108,5 +108,5 @@ Also output the summary as your response so the schedule trigger captures it.
 - **Append-only for transactions** — never remove or modify existing transaction data
 - **Read-only for reference files** — expenses_memory, income_inputs, pluggy_items
 - **Preserve all user work** — classifications, overrides, manual edits are sacred
-- If any step fails, log the error to `sync_log.md` and stop
+- If any step fails, log the error to `heartbeat_log.md` and stop
 - If `.env.local` or `pluggy_items.json` is missing, log an error: "Run /onboard first"

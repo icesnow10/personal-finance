@@ -15,7 +15,8 @@ This project uses [Claude Code](https://claude.ai/claude-code) skills (`.claude/
 | `/categorize` | Classifies expenses into categories (Groceries, Housing, Health, etc.) using merchant mappings from `resources/expenses_memory.md`. Nets refunds against original categories, tracks auto-investments (Troco Turbo), and flags unmatched items for review. Updates the memory file with new mappings. |
 | `/provision` | Partial months only. Estimates recurring fixed costs (rent, utilities, subscriptions, insurance) that haven't appeared yet, based on the last 2 completed months. Each item provisioned individually. Checks active vs cancelled subscriptions. |
 | `/forecast` | Partial months only. Combines `/recognize` (salary provisioning) + `/provision` (expense estimates) to project a full-month budget. All provisioned items tagged `provisional: true` and replaced by actuals when re-compiled with complete data. |
-| `/sync` | Incremental update — fetches **new** transactions and appends to existing data, then re-compiles while preserving all prior classifications and user edits. Designed for scheduled triggers (cron). Logs a diff summary to `sync_log.md`. |
+| `/heartbeat` | Current month pulse — fetches **new** transactions and appends to existing data, then re-compiles while preserving all prior classifications and user edits. Designed for scheduled triggers (cron). Logs a diff summary to `heartbeat_log.md`. |
+| `/close-month` | Closes the previous month if still partial, then triggers `/heartbeat` for the current month. Designed for scheduled triggers at the start of each month. |
 
 ## Quick Start
 
