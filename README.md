@@ -19,6 +19,8 @@ Looking for the web dashboard? See [personal-finance-viewer](https://github.com/
 | `/forecast` | Partial months only. Combines `/recognize` (salary provisioning) + `/provision` (expense estimates) to project a full-month budget. All provisioned items tagged `provisional: true` and replaced by actuals when re-compiled with complete data. |
 | `/heartbeat` | Current month pulse — fetches **new** transactions and appends to existing data, then re-compiles while preserving all prior classifications and user edits. Designed for scheduled triggers (cron). Logs a diff summary to `heartbeat_log.md`. |
 | `/settle` | Finalizes the previous month — strips all provisioned items, re-compiles with actuals only, then triggers `/heartbeat` for the current month. Designed for scheduled triggers at the start of each month. |
+| `/advise` | Analyzes a compiled budget and generates insights: bucket health check (green/yellow/red), category spotlight, spending pace, wins, warnings, and actionable recommendations. Called automatically by `/compile`. |
+| `/notify` | Sends budget insights via Telegram bot. Formats summaries for `/compile`, `/heartbeat`, and `/settle`. Skips silently if Telegram is not configured. |
 
 ## Quick Start
 
@@ -53,6 +55,21 @@ Alternatively, add the marketplace to your project's `.claude/settings.json`:
 ```
 
 Then install via: `/plugin install open-personal-finance@personal-finance`
+
+## Telegram Notifications (optional)
+
+Get budget insights delivered to your Telegram after every `/compile`.
+
+1. Open Telegram, search **@BotFather**, send `/newbot` and follow the steps
+2. Copy the bot **token**
+3. Open your new bot and send any message (so we can get your chat ID)
+4. Add to your `.env.local`:
+   ```
+   TELEGRAM_BOT_TOKEN=your_bot_token
+   TELEGRAM_CHAT_ID=your_chat_id
+   ```
+
+The `/onboard` skill walks you through this interactively. Once configured, `/compile` automatically runs `/advise` (insights) + `/notify` (Telegram message).
 
 ## Viewer
 
