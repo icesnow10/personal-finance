@@ -65,6 +65,15 @@ Write to `resources/{YYYY-MM}/expenses/result/`:
 
 Present uncategorized transactions for the user to assign categories. After review, update output files and `expenses_memory.md`.
 
+### 9. Run /advise + /notify (if Telegram configured)
+
+After the budget JSON is generated:
+
+1. **Run `/advise`** — analyze the budget and generate insights (health check, spotlight categories, pace, wins/warnings, recommendations)
+2. **Run `/notify`** — send the insights summary via Telegram
+
+Both steps are **optional** — if `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are not set in `.env.local`, skip silently. Never error or prompt the user about Telegram configuration during compile.
+
 ## Output Format
 
 ### Key Rules

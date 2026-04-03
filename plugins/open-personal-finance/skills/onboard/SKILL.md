@@ -142,19 +142,45 @@ Run `/compile` for the current month. This will:
 - Update `expenses_memory.md` with new merchant mappings
 - Generate the budget JSON
 
-### Step 7: Viewer setup (optional)
+### Step 7: Telegram notifications (optional)
+
+Ask the user:
+
+> **Want to receive budget insights on Telegram?** You'll get a summary after each `/compile` with your budget health, warnings, and recommendations.
+
+#### If yes:
+
+1. **Create a bot** — "Open Telegram, search for @BotFather, and send `/newbot`. Follow the steps to create a bot. Paste the **token** here."
+
+2. **Save the token** — Write `TELEGRAM_BOT_TOKEN=<token>` to `.env.local`.
+
+3. **Get the chat ID** — "Now open your new bot in Telegram (the BotFather gives you a link) and send any message. Let me know when you've done that."
+
+4. **Fetch chat ID** — Call `GET https://api.telegram.org/bot<token>/getUpdates` to find the user's `chat.id`.
+
+5. **Save the chat ID** — Append `TELEGRAM_CHAT_ID=<chat_id>` to `.env.local`.
+
+6. **Send test message** — Send a message via the bot API to confirm it works:
+   > "Expense Advisor conectado! Vou te enviar insights sobre seu orcamento mensal."
+
+#### If no:
+
+Skip — `/compile` will detect missing Telegram credentials and skip notifications automatically.
+
+### Step 8: Viewer setup (optional)
 
 Ask the user:
 
 > **Want to visualize your budget in a web dashboard?** Check out [personal-finance-viewer](https://github.com/icesnow10/personal-finance-viewer) — clone it, run `npm install && npm run dev`, then point it to your `resources/` folder in Settings.
 
-### Step 8: Done
+### Step 9: Done
 
 Summarize what was set up:
 - Household members configured
 - Salary definitions saved
 - Pluggy connected (or CSV fallback ready)
 - First month fetched and compiled
+- Telegram notifications (if configured)
 - How to run next month: just `/compile`
 
 ## Rules
