@@ -7,9 +7,9 @@
   },
   "plugins": [
     {
-      "name": "pluggy-open-finance",
+      "name": "open-personal-finance",
       "description": "Fetch transactions via Pluggy Open Finance, classify expenses, recognize income, and generate monthly budget reports.",
-      "source": "./plugins/pluggy-open-finance",
+      "source": "./plugins/open-personal-finance",
       "category": "finance",
       "version": "1.0.0"
     }

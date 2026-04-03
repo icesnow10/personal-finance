@@ -6,7 +6,7 @@ A [Claude Code](https://claude.ai/claude-code) plugin marketplace for personal f
 
 | Plugin | Description |
 |---|---|
-| [pluggy-open-finance](plugins/pluggy-open-finance/README.md) | Fetch transactions via Pluggy Open Finance, classify expenses, recognize income, and generate monthly budget reports. |
+| [open-personal-finance](plugins/open-personal-finance/README.md) | Fetch transactions via Pluggy Open Finance, classify expenses, recognize income, and generate monthly budget reports. |
 
 ## Installing a Plugin
 
@@ -17,7 +17,7 @@ In any project where you use Claude Code:
 /plugin marketplace add icesnow10/personal-finance
 
 # 2. Install the plugin
-/plugin install pluggy-open-finance@personal-finance
+/plugin install open-personal-finance@personal-finance
 ```
 
 Alternatively, add the marketplace to your project's `.claude/settings.json`:
@@ -32,7 +32,7 @@ Alternatively, add the marketplace to your project's `.claude/settings.json`:
 }
 ```
 
-Then install via: `/plugin install pluggy-open-finance@personal-finance`
+Then install via: `/plugin install open-personal-finance@personal-finance`
 
 ## Requirements
 
