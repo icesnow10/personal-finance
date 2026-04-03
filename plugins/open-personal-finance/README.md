@@ -1,4 +1,4 @@
-# pluggy-open-finance
+# open-personal-finance
 
 Claude Code skills for personal finance: fetch bank and credit card transactions via [Pluggy](https://pluggy.ai) (Brazil's Open Finance), classify expenses, recognize income, and generate monthly budget reports — all orchestrated through Claude Code skills.
 
@@ -19,7 +19,7 @@ Copy all skills from this plugin into your project's `.claude/skills/` directory
 
 ```bash
 # From the root of the personal-finance marketplace repo
-PLUGIN_DIR="plugins/pluggy-open-finance/skills"
+PLUGIN_DIR="plugins/open-personal-finance/skills"
 TARGET=".claude/skills"   # path inside your target project
 
 mkdir -p "$TARGET"/{compile,fetch,recognize,categorize,provision,forecast}
