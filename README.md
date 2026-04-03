@@ -4,39 +4,16 @@ AI-powered personal finance toolkit that fetches bank transactions via Open Fina
 
 ## Skills
 
-This project uses Claude Code skills (`.claude/skills/`) to automate the monthly budget workflow. Each skill can be invoked directly or orchestrated by `/compile`.
+This project uses [Claude Code](https://claude.ai/claude-code) skills (`.claude/skills/`) to automate the monthly budget workflow. Each skill can be invoked directly or orchestrated by `/compile`.
 
-### `/compile` — Orchestrator
-
-Runs the full monthly budget pipeline end-to-end. It calls each skill below in sequence, computes budget buckets, and generates a JSON report.
-
-**Usage:** `/compile` for the target month.
-
-### `/fetch` — Transaction Fetcher
-
-Connects to the [Pluggy](https://pluggy.ai) Open Finance API to download all BANK and CREDIT CARD transactions for a target month. Authenticates with your credentials, pulls transactions for all connected accounts, normalizes them into a unified format, and saves to `resources/{YYYY-MM}/expenses/transactions_raw.json`.
-
-Falls back to manual CSV parsing if Pluggy is unavailable.
-
-### `/recognize` — Income Recognition
-
-Scans savings account movements to identify income: salary, cashback, IOF adjustments, investment yields, and named transfers. Uses amount + date window rules defined in `resources/income_inputs.md` to match salary deposits. Skips internal transfers and CC bill payments to avoid double counting.
-
-For partial months, provisions expected salary that hasn't arrived yet.
-
-### `/categorize` — Expense Classification
-
-Classifies every expense transaction into categories (Groceries, Housing, Health, Transportation, etc.) using merchant-to-category mappings from `resources/expenses_memory.md`. Handles refunds by netting them against the original category, tracks small auto-investments (Troco Turbo) separately, and flags unmatched transactions as uncategorized for user review.
-
-After classification, updates the merchant memory file with any new mappings.
-
-### `/provision` — Recurring Expense Estimator
-
-For partial months only. Estimates recurring fixed costs (rent, utilities, subscriptions, insurance) that haven't appeared yet based on the last 2 completed months. Each item is provisioned individually — never bundled. Checks `expenses_memory.md` to know which subscriptions are active vs cancelled.
-
-### `/forecast` — Partial Month Projector
-
-Orchestrates `/recognize` (salary provisioning) + `/provision` (expense estimates) to project a full-month budget from partial data. All provisioned items are tagged with `provisional: true` and are automatically replaced by actuals when the month is re-compiled with complete data.
+| Skill | What it does |
+|---|---|
+| `/compile` | Orchestrates the full pipeline: runs `/fetch` -> `/recognize` -> `/categorize` -> `/forecast` (if partial month), computes budget buckets, and generates a JSON report. Just run `/compile` for the target month. |
+| `/fetch` | Connects to the [Pluggy](https://pluggy.ai) Open Finance API to download BANK + CREDIT CARD transactions. Normalizes everything into `resources/{YYYY-MM}/expenses/transactions_raw.json`. Falls back to manual CSV parsing if Pluggy is unavailable. |
+| `/recognize` | Identifies income from savings account movements — salary, cashback, IOF adjustments, investment yields, named transfers. Matches salary by amount + date window rules from `resources/income_inputs.md`. Provisions expected salary for partial months. |
+| `/categorize` | Classifies expenses into categories (Groceries, Housing, Health, etc.) using merchant mappings from `resources/expenses_memory.md`. Nets refunds against original categories, tracks auto-investments (Troco Turbo), and flags unmatched items for review. Updates the memory file with new mappings. |
+| `/provision` | Partial months only. Estimates recurring fixed costs (rent, utilities, subscriptions, insurance) that haven't appeared yet, based on the last 2 completed months. Each item provisioned individually. Checks active vs cancelled subscriptions. |
+| `/forecast` | Partial months only. Combines `/recognize` (salary provisioning) + `/provision` (expense estimates) to project a full-month budget. All provisioned items tagged `provisional: true` and replaced by actuals when re-compiled with complete data. |
 
 ## Connecting to Pluggy (Open Finance)
 
@@ -97,6 +74,23 @@ resources/
   skills/                     # Claude Code skill definitions
 .env.local                    # Pluggy API credentials (not committed)
 ```
+
+## FAQ
+
+**Posso conectar mais de uma conta bancária?**
+Sim. O MeuPluggy permite conectar múltiplas instituições financeiras. Cada banco conectado gera um Item separado na API do Pluggy. Adicione todos os Item IDs separados por vírgula em `PLUGGY_ITEM_IDS` no `.env.local`.
+
+**Posso adicionar contas de pessoas diferentes (household)?**
+Sim. Na primeira execução do `/fetch`, o skill pergunta a qual membro da casa cada conta pertence. O mapeamento fica salvo em `resources/pluggy_items.json`.
+
+**E se o Pluggy estiver fora do ar ou eu não tiver conta?**
+O `/fetch` aceita CSVs manuais como fallback. Coloque os arquivos em `resources/{YYYY-MM}/expenses/input/` seguindo o padrão de nome: `cc-{holder}-*.csv` para cartão de crédito e `savings-{holder}-*.csv` para conta corrente.
+
+**Precisa rodar `/compile` todo mês?**
+Sim. Rode durante o mês para ter uma projeção (partial month com provisioning) e novamente após o fechamento para o relatório final com dados completos.
+
+**Os dados ficam onde?**
+Tudo fica local no diretório `resources/`. Nenhum dado é enviado para servidores externos além da API do Pluggy (que você já autorizou via Open Finance).
 
 ## Requirements
 
