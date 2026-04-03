@@ -1,9 +1,9 @@
 ---
-name: close-month
-description: Closes the previous month's budget if still partial, then triggers /heartbeat for the current month. Ensures last month has a final, complete budget before moving on. Designed for scheduled triggers at the start of each month. Use when scheduled, or when the user asks to "close month", "finalize last month", or "wrap up".
+name: settle
+description: Settles the previous month's budget if still partial, then triggers /heartbeat for the current month. Ensures last month has a final, complete budget before moving on. Designed for scheduled triggers at the start of each month. Use when scheduled, or when the user asks to "settle", "finalize last month", or "wrap up".
 ---
 
-# Close Month — Finalize Previous + Pulse Current
+# Settle — Finalize Previous + Pulse Current
 
 Ensures the previous month has a final, complete budget (no provisional items), then triggers `/heartbeat` to update the current month. Runs fully unattended.
 
@@ -34,8 +34,9 @@ Run `/compile` for the previous month with:
 - `partial: false` — this is a final compilation
 - Fetch latest transactions from Pluggy for the previous month's full date range (1st to last day)
 - Merge with existing `transactions_raw.json` (append-only, same as `/heartbeat`)
-- Remove all `provisional: true` items — replace with actuals
-- Remove the `forecast` field
+- **Strip ALL provisioned items** — remove every entry with `provisional: true` from income items, expense transactions, and any other array. Provisioned data was an estimate; the final budget must contain only real, observed transactions
+- Remove the `forecast` field entirely
+- Recalculate all totals, bucket percentages, and summary from actual data only
 - Classify using existing `expenses_memory.md` mappings only
 - Leave new uncategorized items in the `unclassified` array with a note
 
