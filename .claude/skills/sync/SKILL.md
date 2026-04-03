@@ -1,11 +1,11 @@
 ---
 name: sync
-description: Unattended sync of the current month's budget data. Fetches latest transactions from Pluggy, re-compiles the budget, and logs a summary. Designed to run via scheduled triggers (cron) without user interaction. Use when scheduled or when the user asks to "sync", "refresh", or "update" the current month.
+description: Unattended sync of the current month's budget data. Fetches NEW transactions from Pluggy and appends them to existing data, then re-compiles the budget. Never overwrites existing classifications or user edits. Designed for scheduled triggers (cron) without user interaction. Use when scheduled or when the user asks to "sync", "refresh", or "update" the current month.
 ---
 
-# Sync — Automated Monthly Budget Update
+# Sync — Incremental Monthly Budget Update
 
-Fetches the latest transactions and re-compiles the current month's budget. Runs fully unattended — no user prompts, no uncategorized review, no interactive steps.
+Fetches **new** transactions since the last sync and appends them to existing data. Re-compiles the budget while preserving all prior classifications, user edits, and manual overrides. Runs fully unattended.
 
 ## When to Use
 
@@ -19,65 +19,94 @@ Fetches the latest transactions and re-compiles the current month's budget. Runs
 
 Use today's date to derive the target month in `YYYY-MM` format.
 
-### 2. Fetch transactions
+### 2. Read existing state
+
+Before fetching anything, read what already exists:
+- `resources/{YYYY-MM}/expenses/transactions_raw.json` — existing transactions (may not exist on first sync)
+- `resources/{YYYY-MM}/expenses/result/budget_*.json` — existing compiled budget (may not exist)
+- `resources/expenses_memory.md` — merchant mappings (read-only, never modify)
+- `resources/income_inputs.md` — income definitions (read-only, never modify)
+
+Count existing transactions to track what's new.
+
+### 3. Fetch new transactions
 
 Run the `/fetch` pipeline for the target month:
 - Authenticate with Pluggy API using credentials from `.env.local`
-- Pull all BANK + CREDIT transactions for the month
-- Normalize and save to `resources/{YYYY-MM}/expenses/transactions_raw.json`
+- Pull all BANK + CREDIT transactions for the full month range
+- **Merge with existing `transactions_raw.json`** — deduplicate by `date|description|amount` key
+- Only append truly new transactions; never remove or modify existing ones
 - If `pluggy_items.json` already exists, use it (do NOT prompt for holder mapping)
 - If Pluggy fails, log the error and abort — do not fall back to CSVs in unattended mode
 
-### 3. Determine if partial or complete
+### 4. Determine if partial or complete
 
 - If today is the last day of the month (or later): `partial: false`
 - Otherwise: `partial: true`, `data_through: today's date`
 
-### 4. Compile budget
+### 5. Compile budget (preserving existing work)
 
 Run the `/compile` pipeline for the target month:
-- `/recognize` — identify income, provision salary if partial
-- `/categorize` — classify expenses using `resources/expenses_memory.md`
+- `/recognize` — identify income using existing rules; provision salary if partial
+- `/categorize` — classify expenses using **only** existing mappings from `expenses_memory.md`
 - `/forecast` (if partial) — provision recurring expenses
 - Generate budget JSON to `resources/{YYYY-MM}/expenses/result/`
 
-### 5. Handle uncategorized silently
+**Preservation rules:**
+- If a transaction was already classified in a prior compile, keep its classification
+- If a transaction was manually reclassified by the user, preserve the override
+- Only classify new (previously unseen) transactions
+- New uncategorized merchants stay in the `unclassified` array — do not guess
+
+### 6. Handle uncategorized silently
 
 In unattended mode, do NOT prompt for uncategorized transaction review. Instead:
-- Classify what you can using existing merchant mappings
+- Classify what you can using existing merchant mappings from `expenses_memory.md`
 - Leave unmatched transactions in the `unclassified` array
 - Add a note: `"Uncategorized items pending review — run /compile interactively to classify"`
 
-### 6. Compare with previous sync
-
-If a budget JSON already exists for this month, compare:
-- New transactions since last sync (count + total amount)
-- Changes in income total
-- Changes in expense total
-- New uncategorized merchants
-
 ### 7. Log summary
 
-Write a sync log to `resources/{YYYY-MM}/expenses/sync_log.md` (append, don't overwrite):
+Append to `resources/{YYYY-MM}/expenses/sync_log.md` (never overwrite previous entries):
 
 ```markdown
 ## Sync — {YYYY-MM-DD HH:MM}
 
-- Transactions fetched: {count}
+- Total transactions: {count}
 - New since last sync: {count} (+R$ {amount})
 - Income: R$ {total} ({provisional note if partial})
 - Expenses: R$ {total}
 - Net: R$ {net}
-- Uncategorized: {count} items
+- Uncategorized: {count} items ({new_count} new)
 - Budget written to: {file path}
 ```
 
 Also output the summary as your response so the schedule trigger captures it.
 
+## What is NEVER modified
+
+| File / Data | Rule |
+|---|---|
+| `resources/expenses_memory.md` | Read-only — only `/compile` interactive or `/categorize` with user review can update |
+| `resources/income_inputs.md` | Read-only — only `/onboard` or user can update |
+| `resources/pluggy_items.json` | Read-only — never re-prompt for holder mapping |
+| Existing transaction classifications | Preserved — if already categorized, keep it |
+| User manual overrides | Preserved — never overwrite reclassifications |
+| Previous `sync_log.md` entries | Append-only — never delete prior log entries |
+
+## What IS updated
+
+| File / Data | Rule |
+|---|---|
+| `transactions_raw.json` | New transactions appended (deduped by date+description+amount) |
+| `budget_*.json` | Regenerated with merged data (new + existing classifications) |
+| `sync_log.md` | New entry appended |
+
 ## Rules
 
 - **Never prompt for user input** — this skill must run fully unattended
-- **Never overwrite `expenses_memory.md`** with guesses — only use existing mappings
-- **Always preserve existing `pluggy_items.json`** — never ask for holder re-mapping
+- **Append-only for transactions** — never remove or modify existing transaction data
+- **Read-only for reference files** — expenses_memory, income_inputs, pluggy_items
+- **Preserve all user work** — classifications, overrides, manual edits are sacred
 - If any step fails, log the error to `sync_log.md` and stop
 - If `.env.local` or `pluggy_items.json` is missing, log an error: "Run /onboard first"
