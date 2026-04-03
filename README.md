@@ -112,6 +112,8 @@ Sim. Rode durante o mês para ter uma projeção (partial month com provisioning
 
 Want a web dashboard? See [personal-finance-viewer](https://github.com/icesnow10/personal-finance-viewer) — a standalone Next.js app that visualizes the budget JSONs this project generates. Point it to your `resources/` folder and you're set.
 
+![personal-finance-viewer dashboard](docs/images/viewer-overview.png)
+
 ## Requirements
 
 - [Claude Code](https://claude.ai/claude-code) CLI
