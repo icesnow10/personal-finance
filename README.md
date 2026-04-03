@@ -40,7 +40,17 @@ The `/fetch` skill uses [Pluggy](https://pluggy.ai) to pull bank transactions vi
 
 > Full walkthrough: [github.com/pluggyai/meu-pluggy](https://github.com/pluggyai/meu-pluggy)
 
-### Step 4: Configure credentials locally
+### Step 4: Copy Item IDs
+
+1. No Pluggy Dashboard, dentro da sua aplicação Demo, você verá os **Connected Items** listados (um por banco conectado)
+2. Clique no menu **⋮** (três pontos) ao lado do item desejado
+3. Selecione **Copy Item ID**
+
+![Copy Item ID no Pluggy Dashboard](docs/images/pluggy-copy-item-id.png)
+
+Repita para cada banco conectado. Você vai precisar desses IDs no próximo passo.
+
+### Step 5: Configure credentials
 
 Create a `.env.local` file at the project root:
 
@@ -50,7 +60,7 @@ PLUGGY_CLIENT_SECRET=your_client_secret_here
 PLUGGY_ITEM_IDS=item_id_1,item_id_2
 ```
 
-### Step 5: Run your first fetch
+### Step 6: Run your first fetch
 
 ```
 /fetch
