@@ -8,8 +8,6 @@ Looking for the web dashboard? See [personal-finance-viewer](https://github.com/
 
 ## Skills
 
-This project uses [Claude Code](https://claude.ai/claude-code) skills (`.claude/skills/`) to automate the monthly budget workflow. Each skill can be invoked directly or orchestrated by `/compile`.
-
 | Skill | What it does |
 |---|---|
 | `/onboard` | **Start here.** Interactive setup wizard that creates the project structure, walks through Pluggy connection, configures household members and salary definitions, and runs your first `/fetch` + `/compile`. |
@@ -30,89 +28,31 @@ This project uses [Claude Code](https://claude.ai/claude-code) skills (`.claude/
 
 The `/onboard` skill walks you through everything: project structure, Pluggy connection, household setup, and your first budget. If you prefer to set up manually, follow the steps below.
 
-## Connecting to Pluggy (Open Finance)
+## Installing as a Marketplace Plugin
 
-The `/fetch` skill uses [Pluggy](https://pluggy.ai) to pull bank transactions via Brazil's Open Finance ecosystem. Follow these steps to set it up:
+Install the skills into any Claude Code project directly via the native plugin system:
 
-### Step 1: Create a MeuPluggy account
+```bash
+# 1. Add this marketplace (one-time per project)
+/plugin marketplace add icesnow10/personal-finance
 
-1. Go to [meu.pluggy.ai](https://meu.pluggy.ai) and sign up
-2. Connect your bank accounts — select your financial institution and authorize via Open Finance
-3. Once connected, Pluggy will have access to your checking accounts, savings, credit cards, and transactions
-
-> If you have multiple banks, you'll need to authorize each one separately.
-
-### Step 2: Create a Developer account
-
-1. Go to [dashboard.pluggy.ai](https://dashboard.pluggy.ai) and register (includes a 15-day free trial — personal use is unlimited and free)
-2. Create a new application to get your `client_id` and `client_secret`
-
-### Step 3: Link your MeuPluggy account to the Developer app
-
-1. In the Pluggy Dashboard, go to the Demo application
-2. Use OAuth authorization to connect your MeuPluggy account
-3. This creates an **Item** for each connected bank — note down the Item IDs
-
-> Full walkthrough: [github.com/pluggyai/meu-pluggy](https://github.com/pluggyai/meu-pluggy)
-
-### Step 4: Copy Item IDs
-
-1. No Pluggy Dashboard, dentro da sua aplicação Demo, você verá os **Connected Items** listados (um por banco conectado)
-2. Clique no menu **⋮** (três pontos) ao lado do item desejado
-3. Selecione **Copy Item ID**
-
-![Copy Item ID no Pluggy Dashboard](docs/images/pluggy-copy-item-id.png)
-
-Repita para cada banco conectado. Você vai precisar desses IDs no próximo passo.
-
-### Step 5: Configure credentials
-
-Create a `.env.local` file at the project root:
-
-```env
-PLUGGY_CLIENT_ID=your_client_id_here
-PLUGGY_CLIENT_SECRET=your_client_secret_here
-PLUGGY_ITEM_IDS=item_id_1,item_id_2
+# 2. Install the plugin
+/plugin install open-personal-finance@personal-finance
 ```
 
-### Step 6: Run your first fetch
+Alternatively, add the marketplace to your project's `.claude/settings.json`:
 
-```
-/fetch
-```
-
-On the first run, the skill will list all accounts for each Item and ask you to map them to household members. This mapping is saved to `resources/pluggy_items.json` for future runs.
-
-## Project Structure
-
-```
-resources/
-  expenses_memory.md          # Merchant-to-category mappings and budget rules
-  income_inputs.md            # Salary definitions and income source rules
-  pluggy_items.json           # Pluggy account-to-holder mapping
-  {YYYY-MM}/
-    expenses/
-      transactions_raw.json   # Normalized transactions (from /fetch)
-      result/
-        budget_{month}_{year}.json  # Final budget report (from /compile)
-.claude/
-  skills/                     # Claude Code skill definitions
-.env.local                    # Pluggy API credentials (not committed)
+```json
+{
+  "extraKnownMarketplaces": {
+    "personal-finance": {
+      "source": { "source": "github", "repo": "icesnow10/personal-finance" }
+    }
+  }
+}
 ```
 
-## FAQ
-
-**Posso conectar mais de uma conta bancária?**
-Sim. O MeuPluggy permite conectar múltiplas instituições financeiras. Cada banco conectado gera um Item separado na API do Pluggy. Adicione todos os Item IDs separados por vírgula em `PLUGGY_ITEM_IDS` no `.env.local`.
-
-**Posso adicionar contas de pessoas diferentes (household)?**
-Sim. Na primeira execução do `/fetch`, o skill pergunta a qual membro da casa cada conta pertence. O mapeamento fica salvo em `resources/pluggy_items.json`.
-
-**E se o Pluggy estiver fora do ar ou eu não tiver conta?**
-O `/fetch` aceita CSVs manuais como fallback. Coloque os arquivos em `resources/{YYYY-MM}/expenses/input/` seguindo o padrão de nome: `cc-{holder}-*.csv` para cartão de crédito e `savings-{holder}-*.csv` para conta corrente.
-
-**Precisa rodar `/compile` todo mês?**
-Sim. Rode durante o mês para ter uma projeção (partial month com provisioning) e novamente após o fechamento para o relatório final com dados completos.
+Then install via: `/plugin install open-personal-finance@personal-finance`
 
 ## Viewer
 
@@ -123,5 +63,4 @@ Want a web dashboard? See [personal-finance-viewer](https://github.com/icesnow10
 ## Requirements
 
 - [Claude Code](https://claude.ai/claude-code) CLI
-- A [Pluggy](https://pluggy.ai) account with connected bank accounts (or manual CSVs)
-- Node.js (for API calls)
+- Node.js (for API calls in some plugins)

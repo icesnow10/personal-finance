@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "personal-finance",
+  "description": "Claude Code skills marketplace for personal finance",
+  "owner": {
+    "name": "Leonardo Abdalla"
+  },
+  "plugins": [
+    {
+      "name": "open-personal-finance",
+      "description": "Fetch transactions via Pluggy Open Finance, classify expenses, recognize income, and generate monthly budget reports.",
+      "source": "./plugins/open-personal-finance",
+      "category": "finance",
+      "version": "1.0.0"
+    }
+  ]
+}
