@@ -106,16 +106,40 @@ Walk through these steps interactively:
 
 2. **Developer account** — "Now go to dashboard.pluggy.ai and create a developer account (free for personal use). Create an application and copy the `client_id` and `client_secret`. Paste them here."
 
-3. **Create `.env.local`** — Write the credentials file:
+3. **Enable the MeuPluggy connector** — This is a common blocker. Walk the user through it:
+
+   > Before you can link your MeuPluggy account to the Developer app, you need to enable the MeuPluggy connector in the Pluggy Dashboard:
+   >
+   > **a)** In the sidebar, go to **Customization**.
+   >
+   > ![Pluggy sidebar — Customization](docs/images/pluggy-sidebar-customization.png)
+   >
+   > **b)** Click the **Connectors** tab. Disable the **"Custom selection active"** toggle (turn it OFF). Then under **Direct Connectors**, make sure **MeuPluggy** is enabled (toggled ON). Save.
+   >
+   > ![Pluggy Connectors — enable MeuPluggy](docs/images/pluggy-connectors-enable-meuplugy.png)
+   >
+   > **c)** Go to **Applications**. You'll see your Demo App with `Client ID` and `Client Secret`. Click **Launch Demo** to open the Pluggy Connect widget.
+   >
+   > ![Pluggy Applications — Launch Demo](docs/images/pluggy-applications-launch-demo.png)
+   >
+   > **d)** In the Pluggy Connect widget, select **MeuPluggy** as the institution. This is where all your connected bank accounts live.
+   >
+   > ![Pluggy Connect — select MeuPluggy](docs/images/pluggy-connect-select-meuplugy.png)
+   >
+   > Once connected, you'll see your Items listed in the Applications page.
+
+4. **Create `.env.local`** — Write the credentials file:
    ```
    PLUGGY_CLIENT_ID=<user-provided>
    PLUGGY_CLIENT_SECRET=<user-provided>
    PLUGGY_ITEM_IDS=<user-provided>
    ```
 
-4. **Item IDs** — "In the Pluggy Dashboard, open your Demo app. For each connected bank, click the ⋮ menu and select 'Copy Item ID'. Paste all Item IDs here (comma-separated if multiple)."
+5. **Item IDs** — "In the Pluggy Dashboard, open your Demo app. For each connected bank, click the ⋮ menu and select 'Copy Item ID'. Paste all Item IDs here (comma-separated if multiple)."
 
-5. **Update `.env.local`** with the Item IDs.
+   ![Copy Item ID no Pluggy Dashboard](docs/images/pluggy-copy-item-id.png)
+
+6. **Update `.env.local`** with the Item IDs.
 
 #### If manual CSVs:
 
