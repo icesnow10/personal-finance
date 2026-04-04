@@ -170,7 +170,7 @@ Run `/compile` for the current month. This will:
 
 Ask the user:
 
-> **Want to receive budget insights on Telegram?** You'll get a summary after each `/compile` with your budget health, warnings, and recommendations.
+> **Want to receive budget insights on Telegram?** You'll get a summary after each `/compile` with your budget health, warnings, and recommendations. You can receive notifications in a **chat privado** or em um **grupo** (ótimo para compartilhar com o household).
 
 #### If yes:
 
@@ -178,14 +178,26 @@ Ask the user:
 
 2. **Save the token** — Write `TELEGRAM_BOT_TOKEN=<token>` to `.env.local`.
 
-3. **Get the chat ID** — "Now open your new bot in Telegram (the BotFather gives you a link) and send any message. Let me know when you've done that."
+3. **Choose destination** — Ask the user:
 
-4. **Fetch chat ID** — Call `GET https://api.telegram.org/bot<token>/getUpdates` to find the user's `chat.id`.
+   > **Quer receber no seu chat privado ou em um grupo?**
+   > - **Privado**: mais simples, só você recebe.
+   > - **Grupo**: crie um grupo no Telegram (ex: "Gastos"), adicione o bot, e todos os membros do grupo acompanham o orçamento juntos.
+
+4. **Get the chat ID**:
+
+   **If private chat:**
+   - "Open your new bot in Telegram and send any message. Let me know when you've done that."
+   - Call `GET https://api.telegram.org/bot<token>/getUpdates` to find the user's `chat.id` (positive number).
+
+   **If group:**
+   - "Create a Telegram group, give it a name (e.g., 'Gastos'), and add your bot as a member. Then send any message in the group. Let me know when you've done that."
+   - Call `GET https://api.telegram.org/bot<token>/getUpdates` to find the group's `chat.id` (negative number, e.g., `-5274229908`).
 
 5. **Save the chat ID** — Append `TELEGRAM_CHAT_ID=<chat_id>` to `.env.local`.
 
 6. **Send test message** — Send a message via the bot API to confirm it works:
-   > "Expense Advisor conectado! Vou te enviar insights sobre seu orcamento mensal."
+   > "Expense Advisor conectado! Vou te enviar insights sobre seu orçamento mensal."
 
 #### If no:
 

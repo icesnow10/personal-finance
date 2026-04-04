@@ -45,20 +45,50 @@ Read credentials with `source .env.local` or parse the file in Node.
 📊 *Budget {month} {year}*{partial_tag}
 
 💰 Receita: R$ {income}
-💸 Despesa: R$ {expenses}
+💸 Despesas: R$ {expenses}
 📈 Saldo: R$ {net}
 
-*Buckets:*
-{bucket_emoji} Custos Fixos: {actual_pct}% (meta {target_pct}%)
-{bucket_emoji} Conforto: {actual_pct}% (meta {target_pct}%)
-{bucket_emoji} Liberdade Financeira: {actual_pct}% (meta {target_pct}%)
+*Orçamento por bucket:*
+{bucket_emoji} *Custos Fixos*: {actual_pct}% — R$ {spent} de R$ {limit} (sobra R$ {available})
+{bucket_emoji} *Conforto*: {actual_pct}% — R$ {spent} de R$ {limit} (sobra R$ {available})
+{bucket_emoji} *Lib. Financeira*: {actual_pct}% — R$ {accumulated} disponíveis p/ investir (o que não foi gasto vira liberdade financeira)
 
+💬 *Momentum:*
+{momentum_summary}
+
+🔎 *Top 10 Categorias:*
+{category_deep_dive_table}
+
+🏆 *Destaques:*
+{wins}
+
+⚠️ *Fique de olho:*
+{alerts}
+
+💡 *Recomendações:*
 {recommendations}
 ```
 
 Where:
-- `{partial_tag}` = ` (parcial ate {date})` if partial, empty if complete
+- `{partial_tag}` = ` (parcial até {date})` if partial, empty if complete
 - `{bucket_emoji}` = ✅ if green, ⚠️ if yellow, 🔴 if red (from `/advise` health check)
+- `{spent}`, `{limit}`, `{available}` = R$ amounts from `/advise` health.*.spent_amount, limit_amount, available_amount
+- `{accumulated}` = R$ amount from `/advise` health.liberdade_financeira.accumulated_amount — this is Net (income − expenses), the money available to invest
+- `{momentum_summary}` = 1-2 sentence conversational summary from `/advise` momentum — like a financial advisor giving a quick pulse check, NOT bullet points
+- `{category_deep_dive_table}` = formatted from `/advise` category_deep_dive array, one line per category:
+  ```
+  1. Shopping: R$ 4.487 (▼44% · -R$ 3.581)
+  2. Travel: R$ 3.361 (▼6% · -R$ 230)
+  3. Moradia: R$ 2.800 (→ estável)
+  ...
+  ```
+  Use ▲ for increase, ▼ for decrease, → for stable (±5%). Include the note in parentheses if present and adds context.
+  If no previous month data, show just the amount without comparison.
+- `{wins}` = bullet list from `/advise` wins
+- `{alerts}` = bullet list from `/advise` alerts
+- `{recommendations}` = bullet list from `/advise` recommendations
+- Omit any section that has zero items (e.g., no alerts = skip the alerts block entirely)
+- For Liberdade Financeira, "sobra" doesn't apply — this bucket represents savings/investment, so show the amount accumulated instead
 
 ### After /heartbeat (incremental update)
 

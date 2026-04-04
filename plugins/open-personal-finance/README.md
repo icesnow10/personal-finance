@@ -46,6 +46,32 @@ PLUGGY_CLIENT_SECRET=your_client_secret_here
 PLUGGY_ITEM_IDS=item_id_1,item_id_2
 ```
 
+#### Telegram notifications (optional)
+
+Budget insights can be sent to Telegram after each `/compile`. You can send to a **private chat** or a **group**.
+
+**Private chat:**
+```env
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_user_id
+```
+
+**Group chat:**
+1. Create a Telegram group (e.g., "Gastos")
+2. Add your bot to the group
+3. Send any message in the group
+4. Get the group chat ID (negative number) by calling:
+   ```
+   https://api.telegram.org/bot<TOKEN>/getUpdates
+   ```
+5. Set the group ID in `.env.local`:
+   ```env
+   TELEGRAM_BOT_TOKEN=your_bot_token
+   TELEGRAM_CHAT_ID=-1234567890
+   ```
+
+> Groups are great for sharing budget insights with your household (e.g., partner, family). All members of the group will see the monthly reports.
+
 ### Resource files
 
 Create these files in your project's `resources/` directory before running `/compile`:

@@ -34,8 +34,7 @@ For partial months, `/recognize` provisions expected salary using definitions in
 
 Apply expense classification using `expenses_memory.md` to all non-income, non-skipped transactions:
 - **Categorized expenses** by category and subcategory
-- **Investment (Troco Turbo)** — small auto RDB applications
-- **Intentional RDB** — large lump-sum investments (NOT in expense totals, threshold in `expenses_memory.md`)
+- **Skipped**: RDB/caixinha applications (Aplicação RDB) — these are internal transfers, not expenses or investments
 - **Uncategorized** — flagged for user review
 
 After classification, update `resources/expenses_memory.md` with any new merchant mappings.
@@ -47,10 +46,9 @@ If `partial: true`, run `/forecast` which orchestrates `/recognize` (salary prov
 ### 5. Compute summary
 
 - `Total Income` = sum of all income items (including provisioned for partial months)
-- `Total Expenses` = sum of all categorized + uncategorized + Investment (Troco Turbo)
+- `Total Expenses` = sum of all categorized + uncategorized (RDB applications are skipped, not in totals)
 - `Net = Total Income - Total Expenses`
-- `Investment = Troco Turbo + max(0, Net)`
-- Intentional RDB tracked separately, NOT in totals
+- `Liberdade Financeira = max(0, Net)` — this is what's available to invest, not what was invested
 
 ### 6. Compute budget buckets
 
@@ -97,7 +95,7 @@ Must match `BudgetData` interface from `src/lib/types.ts`. Key fields:
 - `budget_buckets` — exactly 3 buckets, no "Outros":
   - `custos_fixos`: Housing, Health, Insurance, Groceries, Transportation
   - `conforto`: Wellness, Subscriptions, Personal Care, Services, Food/Dining, Recreation, Shopping, Travel, Family Support (catch-all for any unlisted category)
-  - `liberdade_financeira`: categories `["Investment (Troco Turbo)", "Net"]` — Investment (Troco Turbo) must match the exact key used in `expenses.by_category`
-- `intentional_rdb_investments`
+  - `liberdade_financeira`: `["Net"]` — Net = receita − despesas. RDB/caixinha applications are skipped (internal transfers), not counted as investment or expense. Only explicit investments (ações, Tesouro, fundos) would be tracked here if they exist.
+- `intentional_rdb_investments` — deprecated: RDB applications are now skipped. Keep field for backwards compatibility but set to empty/null.
 - `skipped[]`
 - `notes[]`
