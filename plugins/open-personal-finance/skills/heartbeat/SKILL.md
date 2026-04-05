@@ -13,6 +13,10 @@ Fetches **new** transactions since the last heartbeat and appends them to existi
 - Manual "sync" / "refresh" requests
 - Keeping a partial month's forecast up to date as new transactions arrive
 
+## Household
+
+The `{household}` is a short lowercase name that scopes all data. Determined from context or from the scheduled trigger configuration.
+
 ## Flow
 
 ### 1. Determine target month
@@ -22,10 +26,10 @@ Use today's date to derive the target month in `YYYY-MM` format.
 ### 2. Read existing state
 
 Before fetching anything, read what already exists:
-- `resources/{YYYY-MM}/expenses/transactions_raw.json` — existing transactions (may not exist on first sync)
-- `resources/{YYYY-MM}/expenses/result/budget_*.json` — existing compiled budget (may not exist)
-- `resources/expenses_memory.md` — merchant mappings (read-only, never modify)
-- `resources/income_inputs.md` — income definitions (read-only, never modify)
+- `resources/{household}/{YYYY-MM}/expenses/transactions_raw.json` — existing transactions (may not exist on first sync)
+- `resources/{household}/{YYYY-MM}/expenses/result/budget_*.json` — existing compiled budget (may not exist)
+- `resources/{household}/expenses_memory.md` — merchant mappings (read-only, never modify)
+- `resources/{household}/income_memory.md` — income definitions (read-only, never modify)
 
 Count existing transactions to track what's new.
 
@@ -36,7 +40,7 @@ Run the `/fetch` pipeline for the target month:
 - Pull all BANK + CREDIT transactions for the full month range
 - **Merge with existing `transactions_raw.json`** — deduplicate by `date|description|amount` key
 - Only append truly new transactions; never remove or modify existing ones
-- If `pluggy_items.json` already exists, use it (do NOT prompt for holder mapping)
+- If `resources/{household}/pluggy_items.json` already exists, use it (do NOT prompt for holder mapping)
 - If Pluggy fails, log the error and abort — do not fall back to CSVs in unattended mode
 
 ### 4. Determine if partial or complete
@@ -48,7 +52,7 @@ Run the `/fetch` pipeline for the target month:
 
 Run the `/compile` pipeline for the target month:
 - `/recognize` — identify income using existing rules; provision salary if partial
-- `/categorize` — classify expenses using **only** existing mappings from `expenses_memory.md`
+- `/categorize` — classify expenses using **only** existing mappings from `resources/{household}/expenses_memory.md`
 - `/forecast` (if partial) — provision recurring expenses
 - Generate budget JSON to `resources/{YYYY-MM}/expenses/result/`
 
@@ -61,7 +65,7 @@ Run the `/compile` pipeline for the target month:
 ### 6. Handle uncategorized silently
 
 In unattended mode, do NOT prompt for uncategorized transaction review. Instead:
-- Classify what you can using existing merchant mappings from `expenses_memory.md`
+- Classify what you can using existing merchant mappings from `resources/{household}/expenses_memory.md`
 - Leave unmatched transactions in the `unclassified` array
 - Add a note: `"Uncategorized items pending review — run /compile interactively to classify"`
 
@@ -75,7 +79,7 @@ After `/advise` generates insights, run `/notify` to send the summary via Telegr
 
 ### 9. Log summary
 
-Append to `resources/{YYYY-MM}/expenses/heartbeat_log.md` (never overwrite previous entries):
+Append to `resources/{household}/{YYYY-MM}/expenses/heartbeat_log.md` (never overwrite previous entries):
 
 ```markdown
 ## Heartbeat — {YYYY-MM-DD HH:MM}
@@ -95,9 +99,9 @@ Also output the summary as your response so the schedule trigger captures it.
 
 | File / Data | Rule |
 |---|---|
-| `resources/expenses_memory.md` | Read-only — only `/compile` interactive or `/categorize` with user review can update |
-| `resources/income_inputs.md` | Read-only — only `/onboard` or user can update |
-| `resources/pluggy_items.json` | Read-only — never re-prompt for holder mapping |
+| `resources/{household}/expenses_memory.md` | Read-only — only `/compile` interactive or `/categorize` with user review can update |
+| `resources/{household}/income_memory.md` | Read-only — only `/onboard` or user can update |
+| `resources/{household}/pluggy_items.json` | Read-only — never re-prompt for holder mapping |
 | Existing transaction classifications | Preserved — if already categorized, keep it |
 | User manual overrides | Preserved — never overwrite reclassifications |
 | Previous `heartbeat_log.md` entries | Append-only — never delete prior log entries |
@@ -114,7 +118,7 @@ Also output the summary as your response so the schedule trigger captures it.
 
 - **Never prompt for user input** — this skill must run fully unattended
 - **Append-only for transactions** — never remove or modify existing transaction data
-- **Read-only for reference files** — expenses_memory, income_inputs, pluggy_items
+- **Read-only for reference files** — expenses_memory, income_memory, pluggy_items
 - **Preserve all user work** — classifications, overrides, manual edits are sacred
 - If any step fails, log the error to `heartbeat_log.md` and stop
-- If `.env.local` or `pluggy_items.json` is missing, log an error: "Run /onboard first"
+- If `.env.local` or `resources/{household}/pluggy_items.json` is missing, log an error: "Run /onboard first"

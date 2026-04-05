@@ -1,6 +1,6 @@
 ---
 name: classify
-description: Classify specific transactions (expenses or income) using the household's expenses_memory.md and income_inputs.md. Receives 1 or more transactions via reply or inline. Updates memory files with new patterns. Use when the user asks to classify specific transactions — NOT for whole-month batch (that's /categorize).
+description: Classify specific transactions (expenses or income) using the household's expenses_memory.md and income_memory.md. Receives 1 or more transactions via reply or inline. Updates memory files with new patterns. Use when the user asks to classify specific transactions — NOT for whole-month batch (that's /categorize).
 ---
 
 # Classify Transactions
@@ -18,31 +18,31 @@ The user provides specific transactions to classify, typically by replying to a 
 
 1. Parse transactions from the replied message or inline input
 2. Apply the user's instructions for classification
-3. Match against `expenses_memory.md` and `income_inputs.md` for context
+3. Match against `expenses_memory.md` and `income_memory.md` for context
 4. Update `expenses_memory.md` with the new pattern so future occurrences are auto-classified
 
 ## Output
 
 - Confirmation of the classification applied
-- For each transaction: **type** (expense/income), **category**, **subcategory**
+- For each transaction: **type** (expense/income), **category**, **subcategory**, **bank**
 
 ## Reference Files
 
 - `resources/{household}/expenses_memory.md` — Known Merchants table, Manual Overrides, category hierarchy, budget bucket mappings
-- `resources/{household}/income_inputs.md` — Salary definitions, known income sources, date windows, frequencies
+- `resources/{household}/income_memory.md` — Salary definitions, known income sources, date windows, frequencies
 
 ## Classification Logic
 
 For each transaction:
 
 ### 1. Determine type: expense or income
-- Match against `income_inputs.md` salary rules (amount range + date window) and known income patterns
+- Match against `income_memory.md` salary rules (amount range + date window) and known income patterns
 - If it matches an income pattern → `income`
 - Otherwise → `expense`
 
 ### 2. Assign category and subcategory
 - **Expenses:** match description against `expenses_memory.md` merchant patterns (case-insensitive, partial match). Manual Overrides take precedence over Known Merchants. Auto-classify unmatched by name heuristics (e.g. "Posto" → Transportation/Fuel, "Drogaria" → Health/Pharmacy)
-- **Income:** match against `income_inputs.md` definitions and known patterns (salary, cashback, IOF adjustment, FGTS, named transfers)
+- **Income:** match against `income_memory.md` definitions and known patterns (salary, cashback, IOF adjustment, FGTS, named transfers)
 
 ### 3. Flag unknowns
 - If no match is found, flag as **Uncategorized** so the user can review
@@ -62,4 +62,4 @@ For each transaction:
 
 After classifying, update the relevant memory files with any newly discovered patterns:
 - `expenses_memory.md` — add new merchants to Known Merchants table
-- `income_inputs.md` — add new recurring income sources
+- `income_memory.md` — add new recurring income sources

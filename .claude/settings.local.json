@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node:*)",
+      "Bash(python -c \"from bot import claude, handlers, credentials, scheduler, pluggy; print\\('OK'\\)\")",
+      "Bash(python -c \"from bot import claude, handlers, credentials, scheduler, pluggy, main; print\\('OK'\\)\")"
+    ]
+  }
+}

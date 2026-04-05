@@ -13,15 +13,19 @@ Provisions both income and recurring expenses for a partial/open month by orches
 - Mid-month budget projections
 - Called by `/compile` for partial months
 
+## Household
+
+The `{household}` is a short lowercase name that scopes all data. Determined from context or by asking.
+
 ## Pipeline
 
 ### 1. Run /recognize
 
-Identify actual income from observed transactions + provision expected salary that hasn't arrived yet (using definitions from `resources/income_inputs.md`).
+Identify actual income from observed transactions + provision expected salary that hasn't arrived yet (using definitions from `resources/{household}/income_memory.md`).
 
 ### 2. Run /provision
 
-Estimate recurring fixed expenses that haven't appeared yet, using prior completed months as baseline. Read provisioning rules and provisionable categories from `resources/expenses_memory.md`.
+Estimate recurring fixed expenses that haven't appeared yet, using prior completed months as baseline. Read provisioning rules and provisionable categories from `resources/{household}/expenses_memory.md`.
 
 ### 3. Merge
 
@@ -33,7 +37,7 @@ Combine provisioned income and provisioned expenses into a unified forecast. All
 - **Never provision IOF** — IOF is unpredictable and should only appear as actual charges
 - **Use prior months' actuals** to determine individual amounts for each provisioned item
 - Provisioned descriptions end with ` - provisioned`
-- Check `expenses_memory.md` for which categories/subscriptions are currently active vs cancelled
+- Check `resources/{household}/expenses_memory.md` for which categories/subscriptions are currently active vs cancelled
 
 ## Output
 

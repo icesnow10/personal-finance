@@ -119,7 +119,7 @@ The insights are for a real person checking their finances. Write like a helpful
 
 ### Filename
 
-Save to `resources/{YYYY-MM}/expenses/result/` with a **timestamped filename**:
+Save to `resources/{household}/{YYYY-MM}/expenses/result/` with a **timestamped filename**:
 
 ```
 insights_{month}_{year}_{YYYYMMDD}T{HHmmss}.json
