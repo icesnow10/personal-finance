@@ -68,7 +68,11 @@ Run `/heartbeat` for the current month. This will:
 - Compile as partial (with provisioning)
 - Log the heartbeat summary
 
-### 6. Output summary
+### 6. Run /advise + /notify
+
+After closing the previous month (step 3), run `/advise` on the final budget, then `/notify` to send the summary. The `/heartbeat` in step 5 will also run its own `/advise` + `/notify` for the current month.
+
+### 7. Output summary
 
 Report both actions:
 

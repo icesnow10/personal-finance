@@ -1,11 +1,11 @@
 ---
 name: advise
-description: Analyze the compiled budget and generate actionable insights. Compares actuals vs targets, flags problem categories, highlights wins, and provides recommendations. Called by /compile after budget generation. Use when the user asks for insights, advice, or analysis on their budget.
+description: Analyze the compiled budget and generate actionable insights. Compares actuals vs targets, flags problem categories, highlights wins, and provides recommendations. Use when any skill needs insights after budget generation, or when the user asks for advice/analysis on their budget.
 ---
 
 # Advise — Budget Insights
 
-Analyzes a compiled budget and generates actionable insights. Called automatically by `/compile` after budget generation.
+Analyzes a compiled budget and generates actionable insights. Called by any skill that produces a budget (e.g. `/compile`, `/heartbeat`, `/settle`).
 
 ## Input
 

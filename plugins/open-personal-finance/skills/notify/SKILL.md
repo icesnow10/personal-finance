@@ -1,11 +1,11 @@
 ---
 name: notify
-description: Send budget insights and alerts via Telegram. Reads TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID from .env.local. Called by /compile after /advise generates insights. Skips silently if Telegram is not configured. Use when the user asks to send notifications or when /compile triggers it.
+description: Send budget insights and alerts via Telegram. Reads TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID from .env.local. Skips silently if Telegram is not configured. Use when any skill needs to send notifications after /advise, or when the user asks to send notifications.
 ---
 
 # Notify — Telegram Notifications
 
-Sends budget insights and alerts to the user's Telegram via a bot. Called automatically by `/compile` after `/advise`.
+Sends budget insights and alerts to the user's Telegram via a bot. Called by any skill that runs `/advise` (e.g. `/compile`, `/heartbeat`, `/settle`).
 
 ## Prerequisites
 

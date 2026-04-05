@@ -65,7 +65,15 @@ In unattended mode, do NOT prompt for uncategorized transaction review. Instead:
 - Leave unmatched transactions in the `unclassified` array
 - Add a note: `"Uncategorized items pending review — run /compile interactively to classify"`
 
-### 7. Log summary
+### 7. Run /advise
+
+After the budget is compiled, run `/advise` to generate insights (health check, spotlight, momentum, wins/alerts, recommendations).
+
+### 8. Run /notify
+
+After `/advise` generates insights, run `/notify` to send the summary via Telegram. If Telegram is not configured, skip silently.
+
+### 9. Log summary
 
 Append to `resources/{YYYY-MM}/expenses/heartbeat_log.md` (never overwrite previous entries):
 
