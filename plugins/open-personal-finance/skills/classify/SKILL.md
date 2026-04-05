@@ -1,25 +1,39 @@
 ---
 name: classify
-description: Classify transactions (expenses and income) using the household's expenses_memory.md and income_inputs.md. Receives specific transactions to classify and returns type (expense/income), category, and subcategory for each. Use when the bot calls it or when the user asks to classify specific transactions.
+description: Classify specific transactions (expenses or income) using the household's expenses_memory.md and income_inputs.md. Receives 1 or more transactions via reply or inline. Updates memory files with new patterns. Use when the user asks to classify specific transactions — NOT for whole-month batch (that's /categorize).
 ---
 
 # Classify Transactions
 
-Receives one or more transactions and classifies each one as expense or income, with category and subcategory.
+Classifies **specific** transactions (1 or more) — not a whole month. For whole-month batch classification, use `/categorize`.
 
 ## Input
 
-The prompt arrives already within a household context (resolved by the bot from the Telegram group/conversation). It contains:
-- One or more transactions to classify, each with: `date`, `description`, `amount`, `account_name`, `holder`
+The user provides specific transactions to classify, typically by replying to a bot message that contains them, along with classification instructions (e.g. `/classify lucas andrade as services designer`).
+
+- The replied-to message text — contains the transaction(s) to classify
+- The user's instructions — may specify category, subcategory, type, or other hints
+
+## Process
+
+1. Parse transactions from the replied message or inline input
+2. Apply the user's instructions for classification
+3. Match against `expenses_memory.md` and `income_inputs.md` for context
+4. Update `expenses_memory.md` with the new pattern so future occurrences are auto-classified
+
+## Output
+
+- Confirmation of the classification applied
+- For each transaction: **type** (expense/income), **category**, **subcategory**
 
 ## Reference Files
 
 - `resources/{household}/expenses_memory.md` — Known Merchants table, Manual Overrides, category hierarchy, budget bucket mappings
 - `resources/{household}/income_inputs.md` — Salary definitions, known income sources, date windows, frequencies
 
-## Classification Process
+## Classification Logic
 
-For each transaction provided:
+For each transaction:
 
 ### 1. Determine type: expense or income
 - Match against `income_inputs.md` salary rules (amount range + date window) and known income patterns
@@ -49,10 +63,3 @@ For each transaction provided:
 After classifying, update the relevant memory files with any newly discovered patterns:
 - `expenses_memory.md` — add new merchants to Known Merchants table
 - `income_inputs.md` — add new recurring income sources
-
-## Output
-
-For each input transaction, return:
-- **type** — `expense` or `income`
-- **category** — primary category (e.g. `Housing`, `Food/Dining`, `Income`)
-- **subcategory** — specific subcategory (e.g. `Rent/Mortgage`, `Restaurant`, `Salary`)
