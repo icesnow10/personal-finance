@@ -1,11 +1,11 @@
 ---
 name: classify
-description: Classify expense transactions using merchant patterns from the household's expenses_memory.md. Can receive transactions inline or read from a month's transactions_raw.json. Updates the memory file with new merchants. Use when the bot calls it after fetching or when the user asks to classify expenses.
+description: Classify transactions (expenses and income) using the household's expenses_memory.md and income_inputs.md. Can receive transactions inline or read from a month's transactions_raw.json. Updates memory files with new patterns. Use when the bot calls it after fetching or when the user asks to classify transactions.
 ---
 
 # Classify Transactions
 
-Classifies expense transactions using merchant-to-category mappings from the household's expenses_memory.md.
+Classifies both expense and income transactions using the household's memory files.
 
 ## Input
 
@@ -17,15 +17,24 @@ Each transaction has: `date`, `description`, `amount`, `category_name`, `account
 
 ## Reference Files
 
-- `expenses_memory.md` in the household folder — Known Merchants table, Manual Overrides, category hierarchy, budget bucket mappings
+- `expenses_memory.md` — Known Merchants table, Manual Overrides, category hierarchy, budget bucket mappings
+- `income_inputs.md` — Salary definitions, known income sources, date windows, frequencies
 
 ## Classification Process
 
+### Expenses
 1. **Read** `expenses_memory.md` for all merchant-to-category mappings and overrides
 2. **Match** each transaction description against merchant patterns (case-insensitive, partial match)
 3. **Apply overrides** — Manual Overrides take precedence over Known Merchants
 4. **Auto-classify** unmatched merchants by name heuristics (e.g. "Posto" → fuel, "Drogaria" → pharmacy)
 5. **Flag** remaining as **Uncategorized** for user review
+
+### Income
+1. **Read** `income_inputs.md` for salary definitions (amount ranges, date windows, frequency)
+2. **Match** positive transactions from BANK accounts against salary rules (amount within range + date within window)
+3. **Identify** other known income: cashback, IOF adjustments/refunds, named transfers, FGTS
+4. **Flag** unrecognized positive transactions for user review
+5. **Update** `income_inputs.md` with any new recurring income patterns discovered
 
 ## Special Handling
 
@@ -50,17 +59,26 @@ The `holder` field is already set in each transaction from the Pluggy fetch. Use
 
 ## Memory Update
 
-After classification, update `expenses_memory.md`:
+After classification, update the relevant memory files:
+
+### expenses_memory.md
 - Add newly discovered merchants to the "Known Merchants" table
 - Add manual overrides with reasoning in "Notes" column
 - Deduplicate — don't add merchants already mapped with same category
 
+### income_inputs.md
+- Add newly discovered recurring income sources (new employer, recurring transfers)
+- Update amount ranges if salary changed
+- Add new "Other Known Income" entries with frequency and notes
+
 ## Output
 
-1. **Enrich transactions in-place** with: `category`, `subcategory`, `bucket`, `skip` — if reading from file, write back to `transactions_raw.json`
-2. **Update `expenses_memory.md`** — add newly discovered merchants to Known Merchants table
-3. **Return a summary** with:
-   - Total transactions classified
+1. **Enrich transactions in-place** with: `category`, `subcategory`, `bucket`, `skip`, `income_type` (for income) — if reading from file, write back to `transactions_raw.json`
+2. **Update `expenses_memory.md`** — add newly discovered merchants
+3. **Update `income_inputs.md`** — add newly discovered income patterns
+4. **Return a summary** with:
+   - Total transactions classified (expenses + income)
    - Count per category
+   - Total income recognized
    - Uncategorized items (list descriptions for user review)
-   - New merchants added to memory
+   - New patterns added to memory files
