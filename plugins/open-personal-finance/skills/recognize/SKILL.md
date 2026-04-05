@@ -7,20 +7,24 @@ description: Identify and classify income transactions from savings account data
 
 Identifies income transactions from a list of savings account movements using rules defined in reference files.
 
+## Household
+
+The `{household}` is a short lowercase name that scopes all data. Determined from context or by asking.
+
 ## Input
 
 A normalized transaction list for the target month, already split into savings account vs credit card.
 
 ## Reference Files
 
-- `resources/income_inputs.md` — Salary definitions (label, expected amount, range, date window, frequency), other known income sources
-- `resources/expenses_memory.md` — Named transfer mappings (to distinguish income from family support, etc.)
+- `resources/{household}/income_memory.md` — Salary definitions (label, expected amount, range, date window, frequency), other known income sources
+- `resources/{household}/expenses_memory.md` — Named transfer mappings (to distinguish income from family support, etc.)
 
 ## Salary Recognition
 
 ### Matching Logic
 
-1. Read salary definitions from `resources/income_inputs.md`
+1. Read salary definitions from `resources/{household}/income_memory.md`
 2. Scan all unnamed incoming transfers on savings account for the target month
 3. For each salary definition, find transfers within the amount range AND date window
 4. Match **once per definition per month** — if multiple candidates, pick closest to expected amount
@@ -29,7 +33,7 @@ A normalized transaction list for the target month, already split into savings a
 ### Provisioning for Partial Months
 
 When the month is partial and salary hasn't arrived yet:
-- **Provision expected salary** for each definition using the expected amount from `income_inputs.md`
+- **Provision expected salary** for each definition using the expected amount from `income_memory.md`
 - Mark with `"provisional": true`
 - When month is complete (data through last day), only use actual observed transactions
 
@@ -40,7 +44,7 @@ Classify by matching description patterns. Common patterns (read actual mappings
 - IOF adjustments/reversals
 - Investment yields
 - Named transfers (check `expenses_memory.md` to distinguish income vs family support)
-- Irregular income (PLR, FGTS, etc. — timing rules in `income_inputs.md`)
+- Irregular income (PLR, FGTS, etc. — timing rules in `income_memory.md`)
 
 ## Skip Rules
 
@@ -55,4 +59,4 @@ Skip these to avoid double counting:
 
 ## Output
 
-Returns classified income items and skipped transfers for `/compile` to assemble into the final report.
+Returns classified income items and skipped transfers for `/compile` to assemble into the final report. Each income item and skipped transfer preserves `bank` and `account_number` from the normalized input. Provisioned salary items should use the `bank` from the salary definition in `income_memory.md` (if available) or `null`.

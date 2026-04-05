@@ -11,24 +11,28 @@ Estimates recurring expenses that haven't yet appeared in a partial month, based
 
 Only for **partial/open months** where the data doesn't cover the full month. Skip entirely for complete months.
 
+## Household
+
+The `{household}` is a short lowercase name that scopes all data. Determined from context or by asking.
+
 ## Input
 
 - Target month and `data_through` date
 - Already-categorized expenses from `/categorize`
-- Prior months' budget JSON files from `resources/{YYYY-MM}/expenses/result/`
-- `resources/expenses_memory.md` — for provisionable categories, active/cancelled subscriptions, and category-to-bucket mappings
+- Prior months' budget JSON files from `resources/{household}/{YYYY-MM}/expenses/result/`
+- `resources/{household}/expenses_memory.md` — for provisionable categories, active/cancelled subscriptions, and category-to-bucket mappings
 
 ## Process
 
 1. **Read** the 2 most recent completed months' budget JSONs to establish recurring expense baselines
-2. **Read** `expenses_memory.md` to check which subscriptions are currently active vs cancelled
+2. **Read** `resources/{household}/expenses_memory.md` to check which subscriptions are currently active vs cancelled
 3. **Identify recurring expenses** — categories/subcategories that appear consistently with similar amounts
 4. **Compare** against already-observed expenses for the current partial month
 5. **Provision** missing recurring items that haven't appeared yet
 
 ## Provisionable Categories
 
-Only provision categories with predictable recurring amounts. Read the specific list from `expenses_memory.md`. General guidelines:
+Only provision categories with predictable recurring amounts. Read the specific list from `resources/{household}/expenses_memory.md`. General guidelines:
 
 **Provision these (if recurring and active):**
 - Housing fixed costs (rent, condo, utilities, cleaning)
@@ -50,9 +54,9 @@ Only provision categories with predictable recurring amounts. Read the specific 
 - Mark all provisioned expenses with `"provisional": true`
 - Provisioned descriptions end with ` - provisioned`
 - **Do not provision** items already observed in the current partial month (match by merchant pattern)
-- **Check `expenses_memory.md`** for cancelled subscriptions before provisioning — do not provision cancelled services
+- **Check `resources/{household}/expenses_memory.md`** for cancelled subscriptions before provisioning — do not provision cancelled services
 - One-off annual charges should not be provisioned monthly
 
 ## Output
 
-Returns a list of provisioned expense items with expected amounts, for `/compile` to merge into the report alongside actual expenses.
+Returns a list of provisioned expense items with expected amounts, for `/compile` to merge into the report alongside actual expenses. Each provisioned item should include `bank` and `account_number` from the historical transaction it was based on (or `null` if unknown).

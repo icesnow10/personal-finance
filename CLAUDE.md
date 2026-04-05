@@ -26,21 +26,43 @@ Claude Code reads `.claude-plugin/marketplace.json` at the repo root. The `sourc
 
 Each `skills/<name>/SKILL.md` has YAML frontmatter with `name` and `description`, followed by Markdown instructions. The `description` is what Claude Code uses to decide when to invoke the skill — it must be precise and include trigger phrases.
 
-### The `open-personal-finance` plugin skill pipeline
+### The `open-personal-finance` plugin
 
-The 6 skills form a pipeline orchestrated by `/compile`:
+Skills form a pipeline orchestrated by `/compile`:
 
 ```
+/onboard          → creates household folder, .env.local, memory files, runs /accounts
 /compile
-  └── /fetch          → pulls transactions from Pluggy API → transactions_raw.json
-  └── /recognize      → classifies income from savings account movements
-  └── /categorize     → maps expenses to categories using expenses_memory.md
-  └── /forecast       (partial months only)
-        └── /recognize  → provisions expected salary not yet arrived
-        └── /provision  → estimates recurring expenses not yet charged
+  └── /fetch      → runs /accounts, then pulls transactions from Pluggy API
+  │     └── /accounts  → auto-detects holders, banks, account numbers from Pluggy
+  └── /recognize  → classifies income from savings account movements
+  └── /categorize → maps expenses to categories using expenses_memory.md
+  └── /forecast   (partial months only)
+  │     └── /recognize  → provisions expected salary not yet arrived
+  │     └── /provision  → estimates recurring expenses not yet charged
+  └── /advise     → generates budget insights
+  └── /notify     → sends insights via Telegram (if configured)
 ```
 
-Skills read from and write to `resources/` in the **consuming project** (not this repo). The two persistent reference files that grow over time are `resources/expenses_memory.md` (merchant→category mappings) and `resources/income_inputs.md` (salary rules).
+### Data layout in the consuming project
+
+All data is scoped by household. Each household has its own `.env.local` with Pluggy/Telegram credentials:
+
+```
+resources/{household}/
+  .env.local              ← Pluggy + Telegram credentials (per household)
+  expenses_memory.md      ← merchant→category mappings (grows over time)
+  income_memory.md        ← salary rules and income sources (grows over time)
+  pluggy_items.json       ← auto-detected holders, banks, accounts (from /accounts)
+  {YYYY-MM}/
+    expenses/
+      transactions_raw.json
+      result/
+        budget_{month}_{year}.json
+        insights_*.json
+```
+
+The `{household}` is a short lowercase name (e.g. `household-1`) chosen during `/onboard`.
 
 ## Adding a new plugin
 
@@ -56,7 +78,7 @@ The `name` in `plugin.json`, the directory name under `plugins/`, and the `name`
 
 SKILL.md files are instruction documents for Claude, not code. When editing:
 - The `description` frontmatter field drives invocation — keep it specific with trigger phrases
-- Reference files (e.g. `resources/expenses_memory.md`) are in the **consuming project**, not here
+- Reference files (e.g. `resources/{household}/expenses_memory.md`) are in the **consuming project**, not here
 - `node -e` is used for HTTP calls (cross-platform); `curl` is a fallback
 
 ## Installing this marketplace in another project

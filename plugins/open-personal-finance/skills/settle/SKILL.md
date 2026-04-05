@@ -13,6 +13,10 @@ Ensures the previous month has a final, complete budget (no provisional items), 
 - Manual "close last month" requests
 - Called before `/heartbeat` to guarantee clean month boundaries
 
+## Household
+
+The `{household}` is a short lowercase name that scopes all data. Determined from context or from the scheduled trigger configuration.
+
 ## Flow
 
 ### 1. Determine months
@@ -22,7 +26,7 @@ Ensures the previous month has a final, complete budget (no provisional items), 
 
 ### 2. Check if previous month needs closing
 
-Read `resources/{prev-YYYY-MM}/expenses/result/budget_*.json`:
+Read `resources/{household}/{prev-YYYY-MM}/expenses/result/budget_*.json`:
 
 - **If not found**: previous month was never compiled — run full `/compile` for it as a complete month
 - **If found and `partial: true`**: needs closing — re-compile as complete
@@ -37,17 +41,17 @@ Run `/compile` for the previous month with:
 - **Strip ALL provisioned items** — remove every entry with `provisional: true` from income items, expense transactions, and any other array. Provisioned data was an estimate; the final budget must contain only real, observed transactions
 - Remove the `forecast` field entirely
 - Recalculate all totals, bucket percentages, and summary from actual data only
-- Classify using existing `expenses_memory.md` mappings only
+- Classify using existing `resources/{household}/expenses_memory.md` mappings only
 - Leave new uncategorized items in the `unclassified` array with a note
 
 **Preservation rules** (same as `/heartbeat`):
 - Keep existing classifications
 - Keep user manual overrides
-- Never modify `expenses_memory.md`, `income_inputs.md`, or `pluggy_items.json`
+- Never modify `resources/{household}/expenses_memory.md`, `resources/{household}/income_memory.md`, or `resources/{household}/pluggy_items.json`
 
 ### 4. Log close
 
-Append to `resources/{prev-YYYY-MM}/expenses/heartbeat_log.md`:
+Append to `resources/{household}/{prev-YYYY-MM}/expenses/heartbeat_log.md`:
 
 ```markdown
 ## Close — {YYYY-MM-DD HH:MM}
@@ -85,6 +89,6 @@ Current month (YYYY-MM): heartbeat complete — {new_tx_count} transactions, R$ 
 
 - **Never prompt for user input** — fully unattended
 - **Append-only** — same data preservation rules as `/heartbeat`
-- **Read-only for reference files** — expenses_memory, income_inputs, pluggy_items
+- **Read-only for reference files** — expenses_memory, income_memory, pluggy_items
 - If previous month close fails, log the error but still attempt current month heartbeat
-- If `.env.local` or `pluggy_items.json` is missing, log: "Run /onboard first"
+- If `.env.local` or `resources/{household}/pluggy_items.json` is missing, log: "Run /onboard first"
