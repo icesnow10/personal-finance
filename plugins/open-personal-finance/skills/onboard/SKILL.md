@@ -1,27 +1,55 @@
 ---
 name: onboard
-description: Interactive setup wizard for new users. Creates the project structure, walks through Pluggy account connection, configures credentials, sets up household members, and runs the first budget compilation. Use when a new user wants to get started or says "setup", "onboard", "get started", or "first time".
+description: Interactive setup wizard for new users. Creates the household folder structure, initializes memory files and .env.local, and runs /accounts if credentials are set. Use when a new user wants to get started or says "setup", "onboard", "get started", or "first time".
 ---
 
 # Onboard — First-Time Setup Wizard
 
-Guides a new user through the complete setup process, from zero to their first compiled budget.
+Guides a new user through the complete setup process for a new household.
 
 ## Flow
 
-Run each step in order. Ask the user for input where indicated. Do not skip ahead.
+Run each step in order. Do not skip ahead.
 
-### Step 1: Create project structure
+### Step 1: Choose household name
 
-Create the base directories and template files if they don't exist:
+Ask the user:
+
+> **Choose a name for your household** (lowercase, no spaces — e.g. "household-1", "household-2"). This name scopes all your financial data so multiple households can coexist.
+
+Store the `{household}` name — it's used in all paths below.
+
+### Step 2: Create folder structure
+
+Create the base directory:
 
 ```
-resources/
-  expenses_memory.md
-  income_inputs.md
+resources/{household}/
 ```
 
-**`resources/expenses_memory.md`** — initialize with:
+### Step 3: Initialize files
+
+Create the following files inside `resources/{household}/`:
+
+#### `.env.local`
+
+```
+PLUGGY_CLIENT_ID=
+PLUGGY_CLIENT_SECRET=
+PLUGGY_ITEM_IDS=
+
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+```
+
+Tell the user:
+
+> **Fill in your Pluggy credentials** in `resources/{household}/.env.local`:
+> - `PLUGGY_CLIENT_ID` and `PLUGGY_CLIENT_SECRET` from [dashboard.pluggy.ai](https://dashboard.pluggy.ai)
+> - `PLUGGY_ITEM_IDS` — comma-separated Item IDs from your connected banks
+> - `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are optional (for `/notify`)
+
+#### `expenses_memory.md`
 
 ```markdown
 # Expenses Memory
@@ -59,15 +87,15 @@ Intentional RDB threshold: R$ 5,000.00 (amounts above this are intentional lump-
 |---|---|---|
 ```
 
-**`resources/income_inputs.md`** — initialize with:
+#### `income_memory.md`
 
 ```markdown
-# Income Inputs
+# Income Memory
 
 ## Salary Definitions
 
-| Holder | Label | Expected Amount | Range (min-max) | Date Window | Frequency |
-|---|---|---|---|---|---|
+| Holder | Label | Expected Amount | Range (min-max) | Date Window | Frequency | Bank |
+|---|---|---|---|---|---|---|
 
 ## Other Known Income Sources
 
@@ -75,154 +103,26 @@ Intentional RDB threshold: R$ 5,000.00 (amounts above this are intentional lump-
 |---|---|---|
 ```
 
-### Step 2: Household members
+### Step 4: Run /accounts (if credentials are set)
 
-Ask the user:
+Read `resources/{household}/.env.local`. Check if `PLUGGY_CLIENT_ID`, `PLUGGY_CLIENT_SECRET`, and `PLUGGY_ITEM_IDS` are filled in (non-empty).
 
-> **Who are the members of your household?** Each person who has bank accounts to track. I need a short name (lowercase, no spaces) for each. For example: "michel", "carol".
+**If set:** Run `/accounts` to auto-detect holders and banks for each Pluggy item. This saves `resources/{household}/pluggy_items.json`.
 
-Store the answer — it will be used in the next steps.
+**If not set:** Tell the user:
 
-### Step 3: Salary setup
+> Pluggy credentials are not configured yet. Fill in `PLUGGY_CLIENT_ID`, `PLUGGY_CLIENT_SECRET`, and `PLUGGY_ITEM_IDS` in `resources/{household}/.env.local`, then run `/accounts` manually.
 
-For each household member, ask:
-
-> **What is {name}'s monthly net salary?** (approximate amount in R$)
-> **Around which day of the month does it usually arrive?** (e.g., "5th", "last business day")
-
-Fill in `resources/income_inputs.md` with the salary definitions. Use a ±10% range around the expected amount and a ±3 day window around the expected date.
-
-### Step 4: Pluggy connection
-
-Ask the user:
-
-> **Do you want to connect via Pluggy (Open Finance) or use manual CSVs?**
-
-#### If Pluggy:
-
-Walk through these steps interactively:
-
-1. **MeuPluggy account** — "Do you already have a MeuPluggy account at meu.pluggy.ai? If not, go create one and connect your bank accounts. Let me know when you're done."
-
-2. **Developer account** — "Now go to dashboard.pluggy.ai and create a developer account (free for personal use). Create an application and copy the `client_id` and `client_secret`. Paste them here."
-
-3. **Enable the MeuPluggy connector** — This is a common blocker. Walk the user through it:
-
-   > Before you can link your MeuPluggy account to the Developer app, you need to enable the MeuPluggy connector in the Pluggy Dashboard:
-   >
-   > **a)** In the sidebar, go to **Customization**.
-   >
-   > ![Pluggy sidebar — Customization](docs/images/pluggy-sidebar-customization.png)
-   >
-   > **b)** Click the **Connectors** tab. Disable the **"Custom selection active"** toggle (turn it OFF). Then under **Direct Connectors**, make sure **MeuPluggy** is enabled (toggled ON). Save.
-   >
-   > ![Pluggy Connectors — enable MeuPluggy](docs/images/pluggy-connectors-enable-meuplugy.png)
-   >
-   > **c)** Go to **Applications**. You'll see your Demo App with `Client ID` and `Client Secret`. Click **Launch Demo** to open the Pluggy Connect widget.
-   >
-   > ![Pluggy Applications — Launch Demo](docs/images/pluggy-applications-launch-demo.png)
-   >
-   > **d)** In the Pluggy Connect widget, select **MeuPluggy** as the institution. This is where all your connected bank accounts live.
-   >
-   > ![Pluggy Connect — select MeuPluggy](docs/images/pluggy-connect-select-meuplugy.png)
-   >
-   > Once connected, you'll see your Items listed in the Applications page.
-
-4. **Create `.env.local`** — Write the credentials file:
-   ```
-   PLUGGY_CLIENT_ID=<user-provided>
-   PLUGGY_CLIENT_SECRET=<user-provided>
-   PLUGGY_ITEM_IDS=<user-provided>
-   ```
-
-5. **Item IDs** — "In the Pluggy Dashboard, open your Demo app. For each connected bank, click the ⋮ menu and select 'Copy Item ID'. Paste all Item IDs here (comma-separated if multiple)."
-
-   ![Copy Item ID no Pluggy Dashboard](docs/images/pluggy-copy-item-id.png)
-
-6. **Update `.env.local`** with the Item IDs.
-
-#### If manual CSVs:
-
-Explain the expected file format and naming:
-
-> Place your bank statement CSVs in `resources/{YYYY-MM}/expenses/input/`:
-> - **Credit card:** `cc-{holder}-{anything}.csv` with columns `date,title,amount`
-> - **Savings account:** `savings-{holder}-{anything}.csv` with columns `Data,Valor,Identificador,Descricao`
-
-### Step 5: First fetch
-
-Run `/fetch` for the current month. This will:
-- Authenticate with Pluggy (or read CSVs)
-- Download all transactions
-- Ask the user to map accounts to household members (first run only)
-- Save `resources/pluggy_items.json` and `transactions_raw.json`
-
-### Step 6: First compile
-
-Run `/compile` for the current month. This will:
-- Recognize income
-- Categorize expenses (many will be uncategorized on the first run)
-- Present uncategorized transactions for the user to review
-- Update `expenses_memory.md` with new merchant mappings
-- Generate the budget JSON
-
-### Step 7: Telegram notifications (optional)
-
-Ask the user:
-
-> **Want to receive budget insights on Telegram?** You'll get a summary after each `/compile` with your budget health, warnings, and recommendations. You can receive notifications in a **chat privado** or em um **grupo** (ótimo para compartilhar com o household).
-
-#### If yes:
-
-1. **Create a bot** — "Open Telegram, search for @BotFather, and send `/newbot`. Follow the steps to create a bot. Paste the **token** here."
-
-2. **Save the token** — Write `TELEGRAM_BOT_TOKEN=<token>` to `.env.local`.
-
-3. **Choose destination** — Ask the user:
-
-   > **Quer receber no seu chat privado ou em um grupo?**
-   > - **Privado**: mais simples, só você recebe.
-   > - **Grupo**: crie um grupo no Telegram (ex: "Gastos"), adicione o bot, e todos os membros do grupo acompanham o orçamento juntos.
-
-4. **Get the chat ID**:
-
-   **If private chat:**
-   - "Open your new bot in Telegram and send any message. Let me know when you've done that."
-   - Call `GET https://api.telegram.org/bot<token>/getUpdates` to find the user's `chat.id` (positive number).
-
-   **If group:**
-   - "Create a Telegram group, give it a name (e.g., 'Gastos'), and add your bot as a member. Then send any message in the group. Let me know when you've done that."
-   - Call `GET https://api.telegram.org/bot<token>/getUpdates` to find the group's `chat.id` (negative number, e.g., `-5274229908`).
-
-5. **Save the chat ID** — Append `TELEGRAM_CHAT_ID=<chat_id>` to `.env.local`.
-
-6. **Send test message** — Send a message via the bot API to confirm it works:
-   > "Expense Advisor conectado! Vou te enviar insights sobre seu orçamento mensal."
-
-#### If no:
-
-Skip — `/compile` will detect missing Telegram credentials and skip notifications automatically.
-
-### Step 8: Viewer setup (optional)
-
-Ask the user:
-
-> **Want to visualize your budget in a web dashboard?** Check out [personal-finance-viewer](https://github.com/icesnow10/personal-finance-viewer) — clone it, run `npm install && npm run dev`, then point it to your `resources/` folder in Settings.
-
-### Step 9: Done
+### Step 5: Done
 
 Summarize what was set up:
-- Household members configured
-- Salary definitions saved
-- Pluggy connected (or CSV fallback ready)
-- First month fetched and compiled
-- Telegram notifications (if configured)
-- How to run next month: just `/compile`
+- Household `{household}` folder created
+- `.env.local`, `expenses_memory.md`, `income_memory.md` initialized
+- `pluggy_items.json` saved (if credentials were set) — holders and banks auto-detected
+- Next step: run `/compile` to fetch transactions and generate the first budget
 
 ## Rules
 
 - Be conversational and guide the user step by step
 - Never proceed to the next step without user confirmation
-- If the user gets stuck on Pluggy setup, offer the CSV fallback
-- Do not hardcode any real financial data — always ask the user
 - If files already exist, ask before overwriting

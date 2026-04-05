@@ -7,28 +7,32 @@ description: Generate a monthly budget report by running /fetch (Pluggy API), th
 
 Orchestrates the full monthly budget pipeline: fetch/read -> recognize income -> categorize expenses -> forecast (if partial) -> generate output.
 
-## Reference Files (in `resources/`)
+## Household
+
+The `{household}` is a short lowercase name (e.g. `household-1`, `michel`) that scopes all data. It is determined from context (the user's current household) or by asking. All paths below use `resources/{household}/` as root.
+
+## Reference Files (in `resources/{household}/`)
 
 | File | Purpose |
 |---|---|
-| `resources/expenses_memory.md` | Merchant-to-category mappings, manual overrides, known merchants, budget bucket definitions, RDB thresholds |
-| `resources/income_inputs.md` | Salary definitions (amounts, ranges, date windows), other known income sources |
+| `resources/{household}/expenses_memory.md` | Merchant-to-category mappings, manual overrides, known merchants, budget bucket definitions, RDB thresholds |
+| `resources/{household}/income_memory.md` | Salary definitions (amounts, ranges, date windows), other known income sources |
 
 ## Pipeline
 
 ### 1. Fetch transactions — run /fetch
 
-Run `/fetch` for the target month. This connects to Pluggy API (or falls back to CSVs), downloads all BANK + CREDIT transactions, and saves normalized data to `resources/{YYYY-MM}/expenses/transactions_raw.json`.
+Run `/fetch` for the target month. This connects to Pluggy API (or falls back to CSVs), downloads all BANK + CREDIT transactions, and saves normalized data to `resources/{household}/{YYYY-MM}/expenses/transactions_raw.json`.
 
 After `/fetch` completes, read `transactions_raw.json` and proceed.
 
 ### 2. Run /recognize
 
-Apply income recognition rules from `income_inputs.md` to identify:
+Apply income recognition rules from `income_memory.md` to identify:
 - **Income items** (salary, cashback, transfers received, adjustments)
 - **Skipped transfers** (internal movements, prior-month clearing, CC bill payments)
 
-For partial months, `/recognize` provisions expected salary using definitions in `income_inputs.md`.
+For partial months, `/recognize` provisions expected salary using definitions in `income_memory.md`.
 
 ### 3. Run /categorize
 
@@ -37,7 +41,7 @@ Apply expense classification using `expenses_memory.md` to all non-income, non-s
 - **Skipped**: RDB/caixinha applications (Aplicação RDB) — these are internal transfers, not expenses or investments
 - **Uncategorized** — flagged for user review
 
-After classification, update `resources/expenses_memory.md` with any new merchant mappings.
+After classification, update `resources/{household}/expenses_memory.md` with any new merchant mappings.
 
 ### 4. Run /forecast (partial months only)
 
@@ -52,11 +56,11 @@ If `partial: true`, run `/forecast` which orchestrates `/recognize` (salary prov
 
 ### 6. Compute budget buckets
 
-Bucket definitions (target %, categories) are stored in `resources/expenses_memory.md`. Read them from there — do not hardcode.
+Bucket definitions (target %, categories) are stored in `resources/{household}/expenses_memory.md`. Read them from there — do not hardcode.
 
 ### 7. Generate output
 
-Write to `resources/{YYYY-MM}/expenses/result/`:
+Write to `resources/{household}/{YYYY-MM}/expenses/result/`:
 - **`budget_{month}_{year}.json`** — structured JSON matching `BudgetData` type (see `src/lib/types.ts`)
 
 ### 8. User review
@@ -91,6 +95,7 @@ Must match `BudgetData` interface from `src/lib/types.ts`. Key fields:
 - `income.total`, `income.items[]` — set `provisional: true` directly on the item (not inside `details`) for provisioned salary/income
 - `expenses.by_category[].subcategories[].transactions[]` — set `provisional: true` on provisioned expense transactions
 - `expenses.total`, `expenses.by_category`, `expenses.unclassified` (see above for provisional flag on transactions)
+- Every transaction (income items, expense transactions, skipped, unclassified) must include `bank` and `account_number` fields from the normalized data
 - `summary` (totals, net, investment, investment_pct, investment_desired)
 - `budget_buckets` — exactly 3 buckets, no "Outros":
   - `custos_fixos`: Housing, Health, Insurance, Groceries, Transportation
