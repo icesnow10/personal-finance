@@ -1,94 +1,14 @@
 ---
 name: settle
-description: Settles the previous month's budget if still partial, then triggers /heartbeat for the current month. Ensures last month has a final, complete budget before moving on. Designed for scheduled triggers at the start of each month. Use when scheduled, or when the user asks to "settle", "finalize last month", or "wrap up".
+description: Finalize the previous month and then run heartbeat for the current month.
 ---
 
-# Settle — Finalize Previous + Pulse Current
-
-Ensures the previous month has a final, complete budget (no provisional items), then triggers `/heartbeat` to update the current month. Runs fully unattended.
-
-## When to Use
-
-- Scheduled trigger at the start of each month (e.g. 3rd of every month to allow late transactions)
-- Manual "close last month" requests
-- Called before `/heartbeat` to guarantee clean month boundaries
-
-## Household
-
-The `{household}` is a short lowercase name that scopes all data. Determined from context or from the scheduled trigger configuration.
-
-## Flow
-
-### 1. Determine months
-
-- **Previous month**: derive from today's date (e.g. if today is 2026-04-03, previous = 2026-03)
-- **Current month**: today's month (e.g. 2026-04)
-
-### 2. Check if previous month needs closing
-
-Read `resources/{household}/{prev-YYYY-MM}/expenses/result/budget_*.json`:
-
-- **If not found**: previous month was never compiled — run full `/compile` for it as a complete month
-- **If found and `partial: true`**: needs closing — re-compile as complete
-- **If found and `partial: false`**: already closed — skip to step 4
-
-### 3. Close previous month
-
-Run `/compile` for the previous month with:
-- `partial: false` — this is a final compilation
-- Fetch latest transactions from Pluggy for the previous month's full date range (1st to last day)
-- Merge with existing `transactions_raw.json` (append-only, same as `/heartbeat`)
-- **Strip ALL provisioned items** — remove every entry with `provisional: true` from income items, expense transactions, and any other array. Provisioned data was an estimate; the final budget must contain only real, observed transactions
-- Remove the `forecast` field entirely
-- Recalculate all totals, bucket percentages, and summary from actual data only
-- Classify using existing `resources/{household}/expenses_memory.md` mappings only
-- Leave new uncategorized items in the `unclassified` array with a note
-
-**Preservation rules** (same as `/heartbeat`):
-- Keep existing classifications
-- Keep user manual overrides
-- Never modify `resources/{household}/expenses_memory.md`, `resources/{household}/income_memory.md`, or `resources/{household}/pluggy_items.json`
-
-### 4. Log close
-
-Append to `resources/{household}/{prev-YYYY-MM}/expenses/heartbeat_log.md`:
-
-```markdown
-## Close — {YYYY-MM-DD HH:MM}
-
-- Status: closed (partial: false)
-- Total transactions: {count}
-- Income: R$ {total}
-- Expenses: R$ {total}
-- Net: R$ {net}
-- Uncategorized: {count} items
-- Budget written to: {file path}
-```
-
-### 5. Trigger heartbeat for current month
-
-Run `/heartbeat` for the current month. This will:
-- Fetch new transactions for the current month
-- Compile as partial (with provisioning)
-- Log the heartbeat summary
-
-### 6. Run /advise + /notify
-
-After closing the previous month (step 3), run `/advise` on the final budget, then `/notify` to send the summary. The `/heartbeat` in step 5 will also run its own `/advise` + `/notify` for the current month.
-
-### 7. Output summary
-
-Report both actions:
-
-```
-Previous month (YYYY-MM): {closed | already closed | first compile}
-Current month (YYYY-MM): heartbeat complete — {new_tx_count} transactions, R$ {net} net
-```
+# Settle
 
 ## Rules
 
-- **Never prompt for user input** — fully unattended
-- **Append-only** — same data preservation rules as `/heartbeat`
-- **Read-only for reference files** — expenses_memory, income_memory, pluggy_items
-- If previous month close fails, log the error but still attempt current month heartbeat
-- If `.env.local` or `resources/{household}/pluggy_items.json` is missing, log: "Run /onboard first"
+- Refresh the previous month from `transactions_pluggy_raw.json`.
+- Recompile the previous month as a complete flat `budget_*.json`.
+- Strip all provisional rows from the final closed month.
+- Then run `/heartbeat` for the current month.
+- Only use `transactions_pluggy_raw.json` as the month source file.
