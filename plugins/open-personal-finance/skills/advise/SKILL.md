@@ -1,215 +1,189 @@
 ---
 name: advise
-description: Analyze the compiled budget and generate actionable insights. Compares actuals vs targets, flags problem categories, highlights wins, and provides recommendations. Use when any skill needs insights after budget generation, or when the user asks for advice/analysis on their budget.
+description: Analyze the compiled budget and generate actionable insights in a fixed, repeatable pattern for Telegram and human review. Use when any skill needs insights after budget generation, or when the user asks for advice or analysis on their budget.
 ---
 
-# Advise — Budget Insights
+# Advise - Budget Insights
 
-Analyzes a compiled budget and generates actionable insights. Called by any skill that produces a budget (e.g. `/compile`, `/heartbeat`, `/settle`).
+Analyzes a compiled budget and generates insights in a strict, reusable pattern. Called by any skill that produces a budget, such as `/compile`, `/heartbeat`, or `/settle`.
 
 ## Input
 
-The compiled budget JSON for the target month, plus the previous month's budget (if available) for comparison.
+- The compiled month budget
+- The previous month's budget, when available
 
-## Analysis
+## Required Delivery Pattern
 
-### 1. Budget health check — Buckets with amounts
+The skill must always generate the same section order and section labels.
 
-Compare actual bucket percentages against targets. For each bucket compute:
-- **Limite**: the target amount in R$ (target_pct × total_income)
-- **Gasto**: the actual amount spent in R$
-- **Disponível**: Limite − Gasto (how much is left to spend)
+Use this exact pattern:
 
-| Bucket | Target | Status |
-|---|---|---|
-| Custos Fixos | 30% | On track / Over by X pp / Under by X pp |
-| Conforto | 25% | On track / Over by X pp / Under by X pp |
-| Liberdade Financeira | 45% | On track / Over by X pp / Under by X pp |
+```text
+📊 Budget {Mes} {Ano}{partial_tag}
 
-Thresholds:
-- **Green**: within ±3pp of target
-- **Yellow**: 3-7pp off target
-- **Red**: >7pp off target
+💰 Receita: R$ {income}
+💸 Despesas: R$ {expenses}
+📈 Saldo: R$ {net}
 
-### 2. Category spotlight
+Orçamento por bucket:
+{emoji} Custos Fixos: {actual_pct}% — R$ {spent} de R$ {limit} ({bucket_tail})
+{emoji} Conforto: {actual_pct}% — R$ {spent} de R$ {limit} ({bucket_tail})
+{emoji} Lib. Financeira: {actual_pct}% — R$ {available_to_invest} disponíveis p/ investir (o que não foi gasto vira liberdade financeira)
 
-Identify the top 3 categories that need attention:
-- Biggest increase vs previous month (% change)
-- Categories consuming the most budget relative to their bucket
-- Categories with many uncategorized transactions (data quality risk)
+💬 Momentum:
+{momentum_text}
 
-### 3. Income vs pace
+🔎 Top 10 Categorias (vs {MesAnterior}):
+1. {categoria}: R$ {valor} ({variacao})
+2. ...
 
-For partial months:
-- Current spending pace (daily average x days in month) vs total income
-- Projected end-of-month net if pace continues
-- Days remaining and "safe daily spend" to hit targets
+🏆 Destaques:
+* ...
 
-For complete months:
-- Actual net vs target (Liberdade Financeira bucket)
-- Savings rate achieved
+⚠️ Fique de olho:
+* ...
+
+💡 Recomendações:
+* ...
+```
+
+Rules for this pattern:
+- Always keep this section order.
+- Always use these section titles exactly.
+- Always return all sections, even if some sections are short.
+- If there are fewer than 10 categories, return all available categories.
+- `Momentum` must be 1-2 sentences only.
+- `Destaques`, `Fique de olho`, and `Recomendações` should each contain 2-5 bullets when data supports it.
+- The text must be ready to send by Telegram without extra rewriting.
+
+## Analysis Logic
+
+### 1. Header block
+
+Build:
+- `Budget {Mes} {Ano}`
+- append `{partial_tag}` as ` (parcial até DD/MM)` when the month is partial
+
+### 2. Main totals
+
+Always compute and show:
+- Receita
+- Despesas
+- Saldo
+
+Use rounded BRL formatting for display.
+
+### 3. Buckets
+
+For each bucket compute:
+- actual percentage of income
+- target amount in BRL
+- actual spent amount in BRL
+- remaining amount in BRL when applicable
+
+Statuses:
+- `green`: within 3 percentage points of target
+- `yellow`: between 3 and 7 percentage points away from target
+- `red`: more than 7 percentage points away from target
+
+Bucket emojis:
+- `✅` for green
+- `⚠️` for yellow
+- `🔴` for red
+
+Bucket line rules:
+- Custos Fixos and Conforto use `R$ {spent} de R$ {limit}` and then:
+  - `sobra R$ X` when under target
+  - `acima R$ X` when over target
+- Liberdade Financeira should never talk about `sobra`.
+- Liberdade Financeira should describe how much is available to invest, because what is not spent becomes freedom bucket.
 
 ### 4. Momentum
 
-A short, conversational summary of how the month is going — 1-2 sentences max, like a financial advisor giving a quick pulse check. Combine the key signals (trend, biggest movers, installment load, trajectory) into a cohesive narrative instead of listing bullet points.
+Write a short advisor-style reading of the month.
 
-Example: "Mês começando bem — gastos concentrados em parcelas já previstas, sem surpresas. Atenção ao bucket de Conforto que já está 86% comprometido com apenas 3 dias."
+Must combine:
+- whether the month is calm, pressured, or off-track
+- whether spending is mostly installments or new spending
+- which bucket deserves immediate attention
+- whether salaries are actual or still provisioned
 
-Use the following data points to compose the summary (do NOT list them as bullets):
-- Trend vs previous month
-- Top category movers
-- Installment share vs new spending
-- Savings trajectory and outlook
+Do not write a generic summary. It must mention concrete conditions from the month.
 
-### 5. Category deep dive — Top 10
+### 5. Top 10 Categories
 
-Rank the top 10 categories by amount spent (descending) and compare each with the previous month:
+Rank categories by current month amount descending and compare against previous month.
 
-For each category include:
-- **Rank** (1-10 by current month spend)
-- **Category name**
-- **Current amount** (R$)
-- **Previous month amount** (R$) — if no previous month, show "—"
-- **Delta** (R$ and %) — positive = spending increased, negative = decreased
-- **Bucket** it belongs to (Custos Fixos, Conforto, or Liberdade Financeira)
-- **Note** (optional): brief context — e.g., "maioria parcelas", "inclui reembolso de R$ X", "gasto novo"
+For each category:
+- show current amount
+- compare with previous month using one of:
+  - `▲X% · +R$ Y`
+  - `▼X% · -R$ Y`
+  - `→ estável`
+  - `{mes anterior}: R$ Y` when current month is zero and previous month was meaningful
+- when reimbursements dominate and the category is negative, explain that clearly, for example:
+  - `Saúde: -R$ 1.574 (reembolsos > gastos)`
 
-Rules for this section:
-- Always include exactly 10 categories (or all if fewer than 10 exist)
-- Sort by current month amount descending
-- Use friendly category names (not internal keys)
-- **Exclude investment categories** (Investment/Troco Turbo, RDB applications, intentional investments) — these are already reflected in the Liberdade Financeira bucket and are intentional decisions, not expenses to track
-- If a category has reimbursements, show the net amount and mention the reembolso in the note
-- For partial months, add context that amounts are partial
+Rules:
+- Exclude internal transfers, skipped rows, Troco Turbo auto-movements, and intentional investment applications.
+- Use friendly pt-BR category names.
+- For partial months, compare against the previous month but keep wording honest that current month is still partial when relevant.
 
-### 6. Wins and alerts
+### 6. Destaques
 
-**Wins** (positive highlights):
-- Categories that decreased vs previous month
-- Buckets on or under target
-- Savings rate above target
-- Reimbursements received (e.g., "Recebeu R$ X em reembolsos de Saúde" — NOT "Saúde negativa")
-- Do NOT highlight investment applications (RDB, Troco Turbo) as wins — they are intentional decisions already visible in Liberdade Financeira
+Highlight wins such as:
+- reimbursements received
+- category reductions
+- fewer extras than previous month
+- positive net
+- 100% categorized rows
+- buckets at or better than plan
 
-**Alerts** (things to watch):
-- Categories with >30% month-over-month increase
-- Buckets over target
-- High uncategorized count (>10 items)
-- Spending pace exceeding income projection
+Do not praise routine internal transfers or hidden technical artifacts.
 
-### 7. Actionable recommendations
+### 7. Fique de olho
 
-Generate 2-3 specific, actionable recommendations based on the data:
-- "Moradia 2pp acima da meta — verificar se alta na conta de luz foi pontual"
-- "Alimentação +45% — considerar planejamento de refeições na próxima semana"
-- "Caminho para 48% em Liberdade Financeira — acima da meta de 45%"
+Flag risks such as:
+- low remaining margin in Conforto or Custos Fixos
+- salaries still provisioned
+- previous month had non-recurring extra income
+- high concentration in one category
+- many uncategorized rows
+- current pace likely to compress the rest of the month
 
-## Tone and language guidelines
+### 8. Recomendações
 
-The insights are for a real person checking their finances. Write like a helpful financial advisor, not a robot:
+Generate direct next actions, not generic advice.
 
-- **Avoid jargon and internal terms**: Do not expose internal category keys like "Troco Turbo" or "Investment (Troco Turbo)". RDB/caixinha applications are skipped from expenses entirely — they are internal transfers, not investments or expenses. Only reference explicit investments (ações, Tesouro, fundos) when they exist.
-- **Frame positively when possible**: Instead of "Saúde negativa", say "Reembolsos de saúde: recebeu R$ X de volta". Negative amounts from reimbursements are a win, not something alarming.
-- **Use friendly language**: "Seu ritmo de gasto está saudável" > "Pace within acceptable range"
-- **Be specific with money**: Always include R$ amounts alongside percentages. "Conforto em 21% (R$ 4.200 de R$ 5.000)" is more useful than just "21%".
-- **Contextualize installments**: Most credit card expenses are pre-committed installments. When mentioning categories, distinguish between new spending and parcelas when relevant.
-- **Portuguese (pt-BR)**: All user-facing text (wins, alerts, recommendations, summary, momentum) must be in pt-BR.
+Examples:
+- control new discretionary spending in Conforto
+- monitor reimbursements still expected
+- cap daily new spending for remaining days
+- review a specific category if it is accelerating
+
+## Tone and Language
+
+- All user-facing text must be in pt-BR.
+- Sound like a helpful advisor, not a dashboard dump.
+- Always include R$ amounts alongside percentages when useful.
+- Avoid internal keys and technical jargon.
+- Treat reimbursements as reimbursements, not as bizarre negative spending.
+- Distinguish installments from new spending when relevant.
+- Be concrete and readable.
 
 ## Output
 
-### Filename
+Return only the final formatted advisory text.
 
-Save to `resources/{household}/{YYYY-MM}/expenses/result/` with a **timestamped filename**:
-
-```
-insights_{month}_{year}_{YYYYMMDD}T{HHmmss}.json
-```
-
-Example: `insights_apr_2026_20260403T143022.json`
-
-Use the current local date/time at the moment of generation.
-
-### JSON structure
-
-Return a structured insights object. The `generated_at` field **must** be an ISO 8601 timestamp with the current local date and time (not just the date):
-
-```json
-{
-  "generated_at": "2026-04-03T14:30:22-03:00",
-  "month": "2026-04",
-  "partial": true,
-  "data_through": "2026-04-03",
-  "health": {
-    "custos_fixos": {
-      "status": "green|yellow|red",
-      "actual_pct": 0,
-      "target_pct": 30,
-      "delta_pp": 0,
-      "limit_amount": 0,
-      "spent_amount": 0,
-      "available_amount": 0
-    },
-    "conforto": {
-      "status": "green|yellow|red",
-      "actual_pct": 0,
-      "target_pct": 25,
-      "delta_pp": 0,
-      "limit_amount": 0,
-      "spent_amount": 0,
-      "available_amount": 0
-    },
-    "liberdade_financeira": {
-      "status": "green|yellow|red",
-      "actual_pct": 0,
-      "target_pct": 45,
-      "delta_pp": 0,
-      "limit_amount": 0,
-      "spent_amount": 0,
-      "available_amount": 0
-    }
-  },
-  "spotlight": [
-    { "category": "...", "reason": "...", "amount": 0, "change_pct": 0 }
-  ],
-  "momentum": {
-    "expense_trend": { "direction": "up|down|stable", "delta_amount": 0, "delta_pct": 0 },
-    "top_movers": [
-      { "category": "...", "direction": "up|down", "delta_amount": 0, "delta_pct": 0 }
-    ],
-    "installment_share": { "amount": 0, "pct_of_expenses": 0 },
-    "savings_trajectory": "..."
-  },
-  "category_deep_dive": [
-    {
-      "rank": 1,
-      "category": "Shopping",
-      "amount": 4486.77,
-      "prev_amount": 8068.00,
-      "delta_amount": -3581.23,
-      "delta_pct": -44.4,
-      "bucket": "Conforto",
-      "note": "Maioria parcelas de CC — sem compras novas"
-    }
-  ],
-  "pace": {
-    "daily_avg": 0,
-    "projected_total": 0,
-    "safe_daily_spend": 0,
-    "days_remaining": 0
-  },
-  "wins": ["..."],
-  "alerts": ["..."],
-  "recommendations": ["..."],
-  "summary": "Plain-text summary for Telegram (see notify template)"
-}
-```
+- Do not write any file.
+- Do not emit JSON.
+- Do not return a structured object.
+- The output is the final message itself, ready for Telegram or direct display.
+- If another skill needs to send the advice, it should pass this formatted text through directly.
 
 ## Rules
 
-- Be specific — reference actual category names and R$ amounts
-- Compare with previous month when available
-- For partial months, frame insights around pace and projection
-- For complete months, frame insights around final results
-- Keep recommendations actionable and non-judgmental
-- Follow the tone guidelines above — no jargon, friendly, amounts always present
-- The summary field feeds into the `/notify` Telegram template
+- The final response must always follow the fixed delivery pattern above.
+- Compare with previous month when available.
+- For partial months, emphasize pace, margin, and what is still provisioned.
+- For complete months, emphasize final outcome and savings quality.
