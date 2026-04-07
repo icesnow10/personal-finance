@@ -78,7 +78,7 @@ Transaction requirements:
 - every transaction must include:
   - `id`
   - `type` as `income`, `expense`, `skipped`, or `unclassified`
-  - `date`
+  - `date` — **mandatory** for real transactions, **optional** for provisioned ones (`provisional: true`)
   - `description`
   - `amount`
   - `holder`

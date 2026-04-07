@@ -46,7 +46,7 @@ Return additional flat transaction rows only.
 - Do not add a top-level `forecast` object.
 - Do not add `summary`, `budget_buckets`, `by_category`, or any other grouped dashboard fields.
 - All provisioned items must appear as normal rows in the top-level JSON array.
-- Every provisioned row must keep the same transaction-level shape used by `/compile`, including `id`, `type`, `date`, `description`, `amount`, `holder`, `bank`, `account_number`, `source`, and `provisional: true`.
+- Every provisioned row must keep the same transaction-level shape used by `/compile`, including `id`, `type`, `description`, `amount`, `holder`, `bank`, `account_number`, `source`, and `provisional: true`. **`date` is optional** on provisioned rows — omit it since there is no real transaction date.
 - Provisioned expenses must also include `bucket`, `category`, and `subcategory`.
 - Provisioned income rows may leave `bucket`, `category`, and `subcategory` as `null`.
 

@@ -52,6 +52,7 @@ Only provision categories with predictable recurring amounts. Read the specific 
 - **Never bundle** — each provisioned item gets its own line with its own amount. No "Cursor, OpenAI, Elevenlabs" bundles.
 - Use the **average of the last 2 months** as the expected amount for each individual item
 - Mark all provisioned expenses with `"provisional": true`
+- **`date` is optional** on provisioned items — omit it since there is no real transaction date
 - Provisioned descriptions end with ` - provisioned`
 - **Do not provision** items already observed in the current partial month (match by merchant pattern)
 - **Check `resources/{household}/expenses_memory.md`** for cancelled subscriptions before provisioning — do not provision cancelled services
