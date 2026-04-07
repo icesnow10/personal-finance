@@ -23,6 +23,7 @@ Rules:
 | `/compile` | Produces a flat monthly `budget_*.json` file as a top-level JSON array of transaction rows. |
 | `/recognize` | Marks `income` and `skipped` rows. |
 | `/categorize` | Fills `bucket`, `category`, and `subcategory` on expense rows. |
+| `/audit` | Validates schema of raw and compiled files; auto-fixes and retries up to 3 times. Called by `/fetch` and `/heartbeat`. |
 | `/settle` | Closes the previous month by removing provisional rows, then runs `/heartbeat` for the current month. |
 | `/transactions` | Lists rows from the final flat result. |
 | `/classified` | Lists classified expense rows from the final flat result. |

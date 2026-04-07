@@ -21,6 +21,7 @@ Looking for the web dashboard? See [personal-finance-viewer](https://github.com/
 | `/forecast` | Combines income provisioning and recurring expense provisioning for partial months. |
 | `/heartbeat` | Fetches new Pluggy rows for the current month and recompiles without losing prior classifications. |
 | `/settle` | Finalizes the previous month, removes all provisional rows from the closed month, then runs `/heartbeat` for the current month. |
+| `/audit` | Validates schema of raw and compiled files; auto-fixes issues and retries up to 3 times. Called by `/fetch` and `/heartbeat`. |
 | `/advise` | Generates budget insights. |
 | `/notify` | Sends Telegram notifications when configured. |
 | `/transactions` | Lists rows from the flat month result. |

@@ -22,4 +22,6 @@ Downloads Pluggy BANK + CREDIT transactions and saves them to:
 The output of `/fetch` is only:
 - `transactions_pluggy_raw.json`
 
+After writing the file, run `/audit` on `transactions_pluggy_raw.json`. Audit auto-fixes issues and retries up to 3 times. Only stop if auto-fix exhausts all attempts.
+
 That file is the direct input to `/compile`.

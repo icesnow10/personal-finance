@@ -45,6 +45,10 @@ Orçamento por bucket:
 
 💡 Recomendações:
 * ...
+
+❓ Não categorizados: {count} transações
+* {description} — R$ {amount} ({date})
+* ...
 ```
 
 Rules for this pattern:
@@ -160,6 +164,15 @@ Examples:
 - monitor reimbursements still expected
 - cap daily new spending for remaining days
 - review a specific category if it is accelerating
+
+### 9. Não categorizados
+
+Count all rows with `"type": "unclassified"` in the compiled budget.
+
+- Show the total count.
+- List up to 5 examples with `description`, `amount`, and `date`.
+- If there are zero uncategorized rows, show `❓ Não categorizados: 0 — tudo classificado!` and skip the examples.
+- If there are more than 5, show 5 and append `... e mais {N} transações`.
 
 ## Tone and Language
 
