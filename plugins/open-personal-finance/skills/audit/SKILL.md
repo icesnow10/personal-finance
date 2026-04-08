@@ -69,6 +69,37 @@ Structural checks:
 - All `amount` values are numbers.
 - `type` is one of the four allowed values.
 
+## Encoding checks (applies to both files)
+
+All string fields (`description`, `descriptionRaw`, `_holder`, `holder`, `category`, `subcategory`, etc.) must contain clean UTF-8 text. Check for:
+
+- **Replacement character** `U+FFFD` (`�`) — indicates a corrupted encoding conversion.
+- **Garbled sequences** — common mojibake patterns where pt-BR accented characters were double-encoded or decoded with the wrong charset (e.g. `TransferÃªncia` instead of `Transferência`, `Ã§Ã£o` instead of `ção`).
+- **BOM** (`U+FEFF`) — must not appear at the start of the file or within any field.
+
+Common pt-BR mojibake patterns and their corrections:
+
+| Broken | Correct |
+|---|---|
+| `Ã£` | `ã` |
+| `Ã¡` | `á` |
+| `Ã©` | `é` |
+| `Ãª` | `ê` |
+| `Ã­` | `í` |
+| `Ã³` | `ó` |
+| `Ã´` | `ô` |
+| `Ãº` | `ú` |
+| `Ã§` | `ç` |
+| `Ã±` | `ñ` |
+| `Ã¢` | `â` |
+| `Ã` (followed by space or end) | `À` |
+
+Auto-fix rules:
+- Replace `U+FFFD` (`�`): look up the original value from `transactions_pluggy_raw.json` by matching `id`. If the raw file has the correct character, copy it over. If the raw file also has the replacement character, attempt mojibake repair using the table above.
+- Replace mojibake sequences using the table above.
+- Strip BOM from file start.
+- Log every replacement so the user can review.
+
 ## How to run
 
 1. Determine which file(s) to audit:
@@ -108,6 +139,7 @@ Audit FAILED — {filename}: {N} issues found.
       - Invalid `type` value → set to `"unclassified"`.
       - Invalid `bucket` value on expense → set to `null` and change `type` to `"unclassified"`.
       - Top-level object wrapper → extract the array value from the first array-typed key.
+      - `U+FFFD` or mojibake in strings → repair using the raw file lookup or the mojibake table from the encoding checks section. Strip BOM from file start.
    3. Write the corrected file back.
    4. Re-run audit on the corrected file.
    5. Repeat up to **3 total attempts**. If audit still fails after 3 attempts, **STOP the pipeline**, present the remaining issues to the user, and ask how to proceed.
