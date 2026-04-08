@@ -9,7 +9,7 @@ Orchestrates the full monthly budget pipeline: fetch/read -> recognize income ->
 
 ## Household
 
-The `{household}` is a short lowercase name (for example `household-1` or `michel`) that scopes all data. All paths below use `resources/{household}/` as root.
+The `{household}` is a short lowercase name (for example `household-1`) that scopes all data. All paths below use `resources/{household}/` as root.
 
 ## Reference Files
 
@@ -22,7 +22,12 @@ The `{household}` is a short lowercase name (for example `household-1` or `miche
 
 ### 1. Fetch transactions
 
-Run `/fetch` for the target month. It downloads BANK + CREDIT transactions and saves the month source file to `resources/{household}/{YYYY-MM}/expenses/transactions_pluggy_raw.json`.
+Run `/fetch` for the target month. It downloads BANK + CREDIT transactions and saves them as three separate raw files:
+- `resources/{household}/{YYYY-MM}/expenses/cc_open_bill.json` — CC pending (open bill)
+- `resources/{household}/{YYYY-MM}/expenses/cc_closed_bill.json` — CC posted (closed bill)
+- `resources/{household}/{YYYY-MM}/expenses/savings.json` — savings/checking account
+
+Combine all three files into a single transaction list for the pipeline steps below.
 
 ### 2. Run /recognize
 
@@ -88,6 +93,7 @@ Transaction requirements:
 - expense rows must also include `bucket`, `category`, and `subcategory`
 - income, skipped, and uncategorized rows may leave `bucket`, `category`, and `subcategory` as `null`
 - provisioned income or expense items must set `provisional: true` directly on the row
+- installment transactions must carry `totalInstallments` and `installmentNumber` from the raw file when present
 
 Minimal example:
 
@@ -99,7 +105,7 @@ Minimal example:
     "date": "2026-04-05",
     "description": "Conta Vivo",
     "amount": 296,
-    "holder": "michel",
+    "holder": "holder1",
     "bank": "Nubank",
     "account_number": "6072",
     "source": "Credit Card",
@@ -114,7 +120,7 @@ Minimal example:
     "date": "2026-04-05",
     "description": "Compra desconhecida",
     "amount": 42.9,
-    "holder": "michel",
+    "holder": "holder1",
     "bank": "Nubank",
     "account_number": "6072",
     "source": "Credit Card",

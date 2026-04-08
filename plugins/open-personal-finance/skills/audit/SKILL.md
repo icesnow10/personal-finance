@@ -9,9 +9,15 @@ Validates that monthly data files conform to the expected schema. Run automatica
 
 ## Files to validate
 
-### Raw file: `transactions_pluggy_raw.json`
+### Raw files
 
-Location: `resources/{household}/{YYYY-MM}/expenses/transactions_pluggy_raw.json`
+Three separate raw files, all under `resources/{household}/{YYYY-MM}/expenses/`:
+
+| File | Contents |
+|---|---|
+| `cc_open_bill.json` | Credit card transactions with status `PENDING` (open bill) |
+| `cc_closed_bill.json` | Credit card transactions with status `POSTED` (closed bill) |
+| `savings.json` | Savings/checking account (BANK type) transactions |
 
 Must be a top-level JSON array. Each row must have:
 
@@ -27,6 +33,8 @@ Must be a top-level JSON array. Each row must have:
 | `_accountType` | string (`BANK` or `CREDIT`) | yes |
 | `_accountName` | string | yes |
 | `_accountNumber` | string | yes |
+| `totalInstallments` | number | no — only for installment transactions |
+| `installmentNumber` | number | no — only for installment transactions |
 
 Checks:
 - File parses as valid JSON.
@@ -35,6 +43,7 @@ Checks:
 - No duplicate `id` values.
 - All `date` values match `YYYY-MM-DD` format.
 - All `amount` values are numbers.
+- If `totalInstallments` is present, it must be a number >= 1 and `installmentNumber` must also be present (and vice versa). Both or neither.
 
 ### Compiled file: `budget_{month}_{year}.json`
 
@@ -53,6 +62,8 @@ Must be a top-level JSON array. Each row must have:
 | `bank` | string | yes (may be `null` for provisional) |
 | `account_number` | string | yes (may be `null` for provisional) |
 | `source` | string | yes (may be `null` for provisional) |
+| `totalInstallments` | number | no — carry from raw when present |
+| `installmentNumber` | number | no — carry from raw when present |
 
 Additional rules by type:
 - `expense` rows **must** have non-null `bucket`, `category`, and `subcategory`.
@@ -68,6 +79,26 @@ Structural checks:
 - No top-level keys like `transactions`, `summary`, `budget_buckets`, `net`, or any wrapper object.
 - All `amount` values are numbers.
 - `type` is one of the four allowed values.
+
+## Description enrichment check (compiled file only)
+
+Opaque or generic descriptions must have a clarifying suffix appended in parentheses after classification. Flag any row in the compiled budget where:
+
+- `type` is `income`, `expense`, or `skipped` (i.e. already classified, not `unclassified`)
+- AND `description` matches a known opaque pattern without a parenthesized suffix
+
+Known opaque patterns:
+- `Transferência Recebida` (without `|` or `(`)
+- `Transferência enviada|<NAME>` (without trailing `(...)`)
+- `Pagamento efetuado|<NAME>` (without trailing `(...)`)
+
+Detection rule: if `description` matches one of these patterns and does **not** contain `(`, it is missing enrichment.
+
+Auto-fix: look up the row's `category` and `subcategory` and append ` ({category} - {subcategory})` or a more specific label when available from `expenses_memory.md`. For example:
+- `"Pagamento efetuado|GRPQA"` → `"Pagamento efetuado|GRPQA (Aluguel)"`
+- `"Transferência Recebida"` with subcategory `FGTS Saque Aniversário` → `"Transferência Recebida (FGTS Saque Aniversário - holder2)"`
+
+Do not enrich `unclassified` rows — only enrich rows that already have a classification.
 
 ## Encoding checks (applies to both files)
 
@@ -95,7 +126,7 @@ Common pt-BR mojibake patterns and their corrections:
 | `Ã` (followed by space or end) | `À` |
 
 Auto-fix rules:
-- Replace `U+FFFD` (`�`): look up the original value from `transactions_pluggy_raw.json` by matching `id`. If the raw file has the correct character, copy it over. If the raw file also has the replacement character, attempt mojibake repair using the table above.
+- Replace `U+FFFD` (`�`): look up the original value from the raw files (`cc_open_bill.json`, `cc_closed_bill.json`, `savings.json`) by matching `id`. If the raw file has the correct character, copy it over. If the raw file also has the replacement character, attempt mojibake repair using the table above.
 - Replace mojibake sequences using the table above.
 - Strip BOM from file start.
 - Log every replacement so the user can review.
@@ -103,9 +134,9 @@ Auto-fix rules:
 ## How to run
 
 1. Determine which file(s) to audit:
-   - When called by `/fetch`: audit only `transactions_pluggy_raw.json`.
-   - When called by `/heartbeat`: audit only `budget_{month}_{year}.json`.
-   - When called manually by the user: audit both files for the requested month.
+   - When called by `/fetch`: audit all three raw files (`cc_open_bill.json`, `cc_closed_bill.json`, `savings.json`).
+   - When called by `/heartbeat`: audit the compiled `budget_{month}_{year}.json`.
+   - When called manually by the user: audit all raw files and the compiled budget for the requested month.
 
 2. Read the file with `node -e` or the Read tool.
 
@@ -140,6 +171,7 @@ Audit FAILED — {filename}: {N} issues found.
       - Invalid `bucket` value on expense → set to `null` and change `type` to `"unclassified"`.
       - Top-level object wrapper → extract the array value from the first array-typed key.
       - `U+FFFD` or mojibake in strings → repair using the raw file lookup or the mojibake table from the encoding checks section. Strip BOM from file start.
+      - Opaque description without enrichment → append ` ({category} - {subcategory})` or a specific label from `expenses_memory.md`/`income_memory.md`. Only for already-classified rows.
    3. Write the corrected file back.
    4. Re-run audit on the corrected file.
    5. Repeat up to **3 total attempts**. If audit still fails after 3 attempts, **STOP the pipeline**, present the remaining issues to the user, and ask how to proceed.
@@ -151,3 +183,5 @@ Audit FAILED — {filename}: {N} issues found.
    - Row id="pluggy:456": reformatted date "04-05-2026" → "2026-04-05"
    - Unwrapped top-level object key "transactions" → flat array
    ```
+
+6. **After audit passes, run `/learn`** on the compiled budget to persist any new patterns to memory files. This is the final step — it ensures that every classified row in a valid budget is captured in memory for future months.

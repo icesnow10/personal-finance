@@ -35,11 +35,15 @@ Skills form a pipeline orchestrated by `/compile`:
 /compile
   └── /fetch      → runs /accounts, then pulls transactions from Pluggy API
   │     └── /accounts  → auto-detects holders, banks, account numbers from Pluggy
+  │     └── /audit     → validates raw file schema, encoding, auto-fixes
   └── /recognize  → classifies income from savings account movements
+  │     └── /learn     → persists new income/skip patterns to memory
   └── /categorize → maps expenses to categories using expenses_memory.md
+  │     └── /learn     → persists new merchant patterns to memory
   └── /forecast   (partial months only)
   │     └── /recognize  → provisions expected salary not yet arrived
   │     └── /provision  → estimates recurring expenses not yet charged
+  └── /audit      → validates compiled budget schema, encoding, description enrichment
   └── /advise     → generates budget insights
   └── /notify     → sends insights via Telegram (if configured)
 ```
@@ -56,7 +60,9 @@ resources/{household}/
   pluggy_items.json       ← auto-detected holders, banks, accounts (from /accounts)
   {YYYY-MM}/
     expenses/
-      transactions_raw.json
+      cc_open_bill.json       ← CC pending transactions (open bill)
+      cc_closed_bill.json     ← CC posted transactions (closed bill)
+      savings.json            ← savings/checking account transactions
       result/
         budget_{month}_{year}.json
         insights_*.json

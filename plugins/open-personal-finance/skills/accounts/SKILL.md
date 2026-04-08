@@ -29,7 +29,7 @@ PLUGGY_ITEM_IDS=id1,id2   # comma-separated, one per bank connection
 {
   "items": {
     "<item-id>": {
-      "holder": "Michel Herszenhaut",  // fullName from Identity API
+      "holder": "holder1",  // fullName from Identity API
       "bank": "Nubank",               // resolved from COMPE code (see step 4)
       "accounts": {
         "<account-id>": {
