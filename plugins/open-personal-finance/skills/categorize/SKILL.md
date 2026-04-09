@@ -40,20 +40,20 @@ Valid combinations by bucket. Use these as reference when classifying — do not
 | Insurance | Life Insurance |
 | Groceries | Supermarket |
 | Transportation | Fuel, Ride-hailing, Tolls, Public Transit, Parking |
+| Wellness | Gym, Gym/Training, Club/Sports, Surf Training |
 
 ### conforto
 
 | Category | Subcategories |
 |---|---|
-| Shopping | Amazon, MercadoLivre, Clothing, Clothing/Shoes, Baby Products, Baby/Kids Products, Home Improvement, Home (Camicado), Cosmetics, Perfumery, Jewelry, Electronics, Sports Merchandise, Sports/Athletic, Mall (Rio Sul), Mall (Downtown), Customs/Import, Party Supplies, General, Online Store, Gift, Books, Flowers, Hardware, Newsstand |
+| Shopping | Amazon, MercadoLivre, Clothing, Clothing/Shoes, Baby Products, Baby/Kids Products, Home Improvement, Home (Camicado), Cosmetics, Perfumery, Jewelry, Electronics, Sports Merchandise, Sports/Athletic, Mall (Rio Sul), Mall (Downtown), Customs/Import, Party Supplies, General, Online Store, Gift, Books, Flowers, Hardware, Newsstand, Refund (IOF) |
 | Travel | Accommodation, Flights, Booking, Tour Package, NuViagens |
 | Food/Dining | Restaurant, Bar/Restaurant, Fast Food, Ice Cream, Juice Bar, Market, Specialty Food, Coconut (Street Vendor), Beach Kiosk, Market (Convenience) |
 | Subscriptions | Apple, AI Tools, YouTube Premium, Finance App, Design Tools, Microsoft |
-| Wellness | Gym, Gym/Training, Club/Sports, Surf Training, Spa |
 | Services | Designer, Photographer, Photographer (Surf), Personal |
 | Family Support | Family |
 | Recreation | Leisure/Comfort, Events |
-| Personal Care | Barber |
+| Personal Care | Barber, Spa |
 
 ## Special Handling
 
@@ -63,7 +63,7 @@ Valid combinations by bucket. Use these as reference when classifying — do not
 | Aplicacao RDB (large intentional) | Intentional RDB, not part of expense totals |
 | Estorno / refund | Negative transaction in the original category |
 | Reimbursements | Negative transaction in the corresponding category |
-| IOF de compra internacional | Real expense, never provisional |
+| IOF (all types: compra internacional, ajuste a crédito, IOF de volta) | Negative expense in Shopping / Refund (IOF) under conforto bucket. Never classify as income |
 
 ## Output
 

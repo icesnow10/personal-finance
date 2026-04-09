@@ -33,8 +33,8 @@ Each expense category maps to a financial planning bucket with a target percenta
 
 | Bucket | Target % | Categories |
 |---|---:|---|
-| Custos Fixos (Essencial) | 25% | Housing, Health, Insurance, Groceries, Transportation |
-| Conforto (Estilo de vida) | 30% | Wellness, Subscriptions, Personal Care, Services, Food/Dining, Recreation, Shopping, Travel, Family Support |
+| Custos Fixos (Essencial) | 25% | Housing, Health, Insurance, Groceries, Transportation, Wellness |
+| Conforto (Estilo de vida) | 30% | Subscriptions, Personal Care, Services, Food/Dining, Recreation, Shopping, Travel, Family Support |
 | Liberdade Financeira | 45% | Net (receita - despesas). Explicit investments tracked separately when they exist |
 
 ## Manual Overrides
@@ -49,7 +49,7 @@ When auto-classification gets it wrong, add overrides here. These take precedenc
 | HEALTH INSURANCE CO | Health | Reimbursement | Net against Health expenses (reduce category total). NOT income |
 | Aplicacao RDB | Skip | Internal transfer (caixinha/RDB) | Not an expense — money moved to savings box |
 | Resgate RDB | Skip | Internal withdrawal | Internal movement, do not count as income or expense |
-| IOF de compra internacional | Income | Adjustment (IOF reimbursement) | IOF charges are reimbursements, not expenses |
+| IOF de compra internacional | Shopping | Refund (IOF) | IOF charges — negative expense in Shopping/conforto, not income |
 | Estorno de compra | Refund | (original category) | Allocate refund to the original merchant's category as negative amount |
 
 ## Known Merchants
