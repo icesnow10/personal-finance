@@ -50,7 +50,7 @@ Classify by matching description patterns. Common patterns (read actual mappings
 
 Skip these to avoid double counting:
 - Transfers between the holder's own accounts (same person, just moving money)
-- Transfers between household members (e.g. Michel → Carol) — internal movements
+- Transfers between household members (e.g. holder1 → holder2) — internal movements
 - RDB withdrawals (Resgate RDB) — internal movements
 - Fund withdrawals (Resgate Fundo) — internal movements
 - CC bill payments (Pagamento de fatura) — individual CC charges already counted
@@ -60,3 +60,5 @@ Skip these to avoid double counting:
 ## Output
 
 Returns classified income items and skipped transfers for `/compile` to assemble into the final report. Each income item and skipped transfer preserves `bank` and `account_number` from the normalized input. Provisioned salary items should use the `bank` from the salary definition in `income_memory.md` (if available) or `null`.
+
+After classification, run `/learn` to persist any newly discovered income or skip patterns to memory files.

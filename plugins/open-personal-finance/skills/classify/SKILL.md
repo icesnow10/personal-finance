@@ -44,7 +44,11 @@ For each transaction:
 - **Expenses:** match description against `expenses_memory.md` merchant patterns (case-insensitive, partial match). Manual Overrides take precedence over Known Merchants. Auto-classify unmatched by name heuristics (e.g. "Posto" → Transportation/Fuel, "Drogaria" → Health/Pharmacy)
 - **Income:** match against `income_memory.md` definitions and known patterns (salary, cashback, IOF adjustment, FGTS, named transfers)
 
-### 3. Flag unknowns
+### 3. Update description when opaque
+- If the original description is generic or opaque (e.g. "Transferência Recebida", "Pagamento efetuado"), append a clarifying suffix in parentheses with the classification context (e.g. `"Transferência Recebida (FGTS Saque Aniversário - holder2)"`).
+- Do not replace the original text — only append. This preserves traceability to the bank statement.
+
+### 4. Flag unknowns
 - If no match is found, flag as **Uncategorized** so the user can review
 
 ## Special Handling
@@ -60,6 +64,4 @@ For each transaction:
 
 ## Memory Update
 
-After classifying, update the relevant memory files with any newly discovered patterns:
-- `expenses_memory.md` — add new merchants to Known Merchants table
-- `income_memory.md` — add new recurring income sources
+After classifying, run `/learn` to persist any newly discovered patterns to memory files. This replaces manual memory updates — `/learn` handles adding new merchants and income sources automatically.

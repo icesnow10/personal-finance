@@ -51,57 +51,23 @@ Tell the user:
 
 #### `expenses_memory.md`
 
-```markdown
-# Expenses Memory
+Copy the template from `plugins/open-personal-finance/templates/expenses_memory.example.md` into `resources/{household}/expenses_memory.md`.
 
-## Known Merchants
-
-| Merchant Pattern | Category | Subcategory | Notes |
-|---|---|---|---|
-
-## Manual Overrides
-
-| Description | Category | Subcategory | Notes |
-|---|---|---|---|
-
-## Budget Buckets
-
-| Bucket | Target % | Categories |
-|---|---:|---|
-| Custos Fixos (Essencial) | 30% | Housing, Health, Insurance, Groceries, Transportation |
-| Conforto (Estilo de vida) | 25% | Wellness, Subscriptions, Personal Care, Services, Food/Dining, Recreation, Shopping, Travel, Family Support |
-| Liberdade Financeira | 45% | Investment (Troco Turbo), Net |
-
-## RDB Threshold
-
-Intentional RDB threshold: R$ 5,000.00 (amounts above this are intentional lump-sum investments, not auto Troco Turbo)
-
-## Active Subscriptions
-
-| Service | Expected Amount | Holder | Notes |
-|---|---|---|---|
-
-## Cancelled Subscriptions
-
-| Service | Cancelled Since | Notes |
-|---|---|---|
-```
+Walk through the template with the user:
+- **Budget Buckets**: ask if the default percentages (25% Custos Fixos, 30% Conforto, 45% Liberdade Financeira) work for them, or if they want to adjust
+- **Known Merchants**: explain these will grow automatically via `/learn` as they process months
+- **Manual Overrides**: explain these are for when auto-classification gets it wrong
+- **Active Subscriptions**: ask the user to fill in their recurring subscriptions (Netflix, Spotify, gym, etc.) so `/provision` can estimate partial months
+- Replace placeholder names (RENT COMPANY, SUPERMARKET A, etc.) with the user's actual merchants as they discover them — or leave them as examples that `/learn` will replace over time
 
 #### `income_memory.md`
 
-```markdown
-# Income Memory
+Copy the template from `plugins/open-personal-finance/templates/income_memory.example.md` into `resources/{household}/income_memory.md`.
 
-## Salary Definitions
-
-| Holder | Label | Expected Amount | Range (min-max) | Date Window | Frequency | Bank |
-|---|---|---|---|---|---|---|
-
-## Other Known Income Sources
-
-| Pattern | Classification | Notes |
-|---|---|---|
-```
+Walk through the template with the user:
+- **Salary Definitions**: ask for each household member's salary details (expected amount, range, which days it usually posts)
+- **Other Known Income**: ask about FGTS, PLR, 13th salary, freelance income, etc.
+- Replace placeholder values with the user's actual data
 
 ### Step 4: Run /accounts (if credentials are set)
 

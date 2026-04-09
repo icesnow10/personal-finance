@@ -12,7 +12,7 @@ Looking for the web dashboard? See [personal-finance-viewer](https://github.com/
 |---|---|
 | `/onboard` | Creates household folders, `.env.local`, memory files, and runs `/accounts` if credentials are set. |
 | `/accounts` | Detects holder, bank, and account metadata for each Pluggy item and saves `pluggy_items.json`. |
-| `/fetch` | Pulls BANK + CREDIT transactions from Pluggy and writes `resources/{household}/{YYYY-MM}/expenses/transactions_pluggy_raw.json`. |
+| `/fetch` | Pulls BANK + CREDIT transactions from Pluggy and writes `cc_open_bill.json`, `cc_closed_bill.json`, and `savings.json`. |
 | `/compile` | Runs `/fetch` -> `/recognize` -> `/categorize` -> `/forecast` and writes `result/budget_{month}_{year}.json` as a top-level flat JSON array of transaction rows. |
 | `/recognize` | Marks income and skipped internal movements from the month's Pluggy raw transactions. |
 | `/categorize` | Classifies expense rows with `bucket`, `category`, and `subcategory`. |
@@ -22,6 +22,7 @@ Looking for the web dashboard? See [personal-finance-viewer](https://github.com/
 | `/heartbeat` | Fetches new Pluggy rows for the current month and recompiles without losing prior classifications. |
 | `/settle` | Finalizes the previous month, removes all provisional rows from the closed month, then runs `/heartbeat` for the current month. |
 | `/audit` | Validates schema of raw and compiled files; auto-fixes issues and retries up to 3 times. Called by `/fetch` and `/heartbeat`. |
+| `/learn` | Detects new transaction patterns not yet in memory and persists them. Called by `/categorize`, `/recognize`, and `/classify`. |
 | `/advise` | Generates budget insights. |
 | `/notify` | Sends Telegram notifications when configured. |
 | `/transactions` | Lists rows from the flat month result. |
@@ -39,7 +40,9 @@ resources/
     pluggy_items.json
     2026-04/
       expenses/
-        transactions_pluggy_raw.json
+        cc_open_bill.json
+        cc_closed_bill.json
+        savings.json
         result/
           budget_apr_2026.json
           insights_*.json
@@ -47,14 +50,16 @@ resources/
 
 ## Data Contract
 
-Source of truth before compile:
-- `resources/{household}/{YYYY-MM}/expenses/transactions_pluggy_raw.json`
+Source of truth before compile (three raw files):
+- `resources/{household}/{YYYY-MM}/expenses/cc_open_bill.json` — CC pending (open bill)
+- `resources/{household}/{YYYY-MM}/expenses/cc_closed_bill.json` — CC posted (closed bill)
+- `resources/{household}/{YYYY-MM}/expenses/savings.json` — savings/checking account
 
 Final month output:
 - `resources/{household}/{YYYY-MM}/expenses/result/budget_{month}_{year}.json`
 
 Rules:
-- use `transactions_pluggy_raw.json` as the only month source file
+- use `cc_open_bill.json`, `cc_closed_bill.json`, and `savings.json` as the month source files
 - no nested category trees in the result file
 - no summaries or bucket rollups in the result file
 - one top-level flat JSON array only
