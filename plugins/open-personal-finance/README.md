@@ -2,29 +2,37 @@
 
 Claude Code skills for personal finance using Pluggy Open Finance.
 
-## Core Contract
+## Pipeline
 
-Pipeline:
-- `cc_open_bill.json` + `cc_closed_bill.json` + `savings.json` -> `result/budget_{month}_{year}.json`
-
-Rules:
-- Three raw files are the month-level source inputs (CC open bill, CC closed bill, savings).
-- Final result file is flat and transaction-level only.
-- No grouped `expenses.by_category`.
-- No summaries or bucket rollups in the final JSON.
-- Grouping belongs to the viewer.
+```
+cc_open_bill.json + cc_closed_bill.json + savings.json
+                        |
+                    /compile
+                        |
+                        v
+              budget_{month}_{year}.json
+              (flat JSON array of classified transactions)
+```
 
 ## Skills
 
-| Skill | What it does |
+| Skill | Description |
 |---|---|
-| `/fetch` | Writes `cc_open_bill.json`, `cc_closed_bill.json`, and `savings.json` for the month. |
-| `/compile` | Produces a flat monthly `budget_*.json` file as a top-level JSON array of transaction rows. |
-| `/recognize` | Marks `income` and `skipped` rows. |
-| `/categorize` | Fills `bucket`, `category`, and `subcategory` on expense rows. |
-| `/audit` | Validates schema of raw and compiled files; auto-fixes and retries up to 3 times. Called by `/fetch` and `/heartbeat`. |
-| `/learn` | Detects new patterns from classified rows and persists to memory files. Called by `/categorize`, `/recognize`, `/classify`. |
-| `/settle` | Closes the previous month by removing provisional rows, then runs `/heartbeat` for the current month. |
-| `/transactions` | Lists rows from the final flat result. |
-| `/classified` | Lists classified expense rows from the final flat result. |
-| `/missing` | Lists rows still marked `unclassified`. |
+| **`/onboard`** | Interactive setup — household, credentials, memory files |
+| **`/compile`** | Full pipeline: fetch -> recognize -> categorize -> forecast -> advise -> notify |
+| **`/fetch`** | Pulls transactions from Pluggy and writes the three raw files |
+| **`/recognize`** | Marks income and skipped internal movements |
+| **`/categorize`** | Fills `bucket`, `category`, `subcategory` on expense rows |
+| **`/forecast`** | Provisions income + recurring expenses for partial months |
+| **`/heartbeat`** | Incremental update without losing prior classifications |
+| **`/settle`** | Finalizes previous month, heartbeats current month |
+| **`/audit`** | Validates schema, auto-fixes issues (up to 3 retries) |
+| **`/learn`** | Persists new patterns to memory files |
+| **`/advise`** | Generates budget insights |
+| **`/notify`** | Sends insights via Telegram |
+
+## Data contract
+
+- Three raw files are the month-level source inputs
+- Final result is a flat top-level JSON array — no nested trees, no summaries
+- The [viewer](https://github.com/icesnow10/personal-finance-viewer) handles grouping and totals
