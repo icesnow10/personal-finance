@@ -31,6 +31,12 @@ Looking for the web dashboard? See [personal-finance-viewer](https://github.com/
    budget_apr_2026.json  (flat array of classified transactions)
         |
         v
+    /advise --------> generates budget insights
+        |
+        v
+    /notify --------> sends alerts via Telegram
+        |
+        v
    personal-finance-viewer  (grouping, charts, totals)
 ```
 
@@ -89,7 +95,7 @@ The wizard creates your household folder, saves credentials, and runs the first 
 | **`/recognize`** | Identifies salary deposits and income sources from savings account movements. Skips internal transfers between own accounts so they don't inflate totals. Uses rules from `income_memory.md` and calls `/learn` to persist any new patterns discovered. |
 | **`/categorize`** | Classifies every expense row with `bucket`, `category`, and `subcategory` using merchant patterns from `expenses_memory.md`. Handles refunds, special transactions, and flags anything it can't match as `unclassified`. Calls `/learn` to save newly discovered merchant mappings. |
 | **`/forecast`** | Provisions a partial month's budget so numbers are meaningful before the month ends. Combines salary provisioning (expected income not yet deposited) with recurring expense estimates (fixed costs not yet charged). Only runs when the target month is still open. |
-| **`/heartbeat`** | Fetches only new transactions from Pluggy and appends them to existing data. Re-runs the full classification pipeline without overwriting prior edits or user corrections. Designed to run on a schedule (cron) or on-demand for mid-month updates. |
+| **`/heartbeat`** | Fetches only new transactions from Pluggy and appends them to existing data. Re-runs the full classification pipeline without overwriting prior edits or user corrections, then calls `/advise` and `/notify` to deliver insights. Designed to run on a schedule (cron) or on-demand for mid-month updates. |
 | **`/settle`** | Closes the previous month by removing all provisional/estimated rows and locking the final numbers. Then triggers `/heartbeat` for the current month to keep it fresh. Best run at the start of each new month to finalize last month's budget. |
 | **`/audit`** | Validates the schema of both raw files and compiled budget output. Auto-fixes common issues like encoding, missing fields, and malformed entries, retrying up to 3 times. Called automatically by `/fetch` and `/heartbeat` to ensure data integrity. |
 | **`/learn`** | Detects new transaction patterns that aren't yet saved in memory files. Persists merchant-to-category mappings and income recognition rules so future months classify automatically. Called by `/categorize`, `/recognize`, and `/classify` after each run. |

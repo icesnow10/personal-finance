@@ -111,7 +111,8 @@ Where:
 
 ## Rules
 
-- Skip silently if `TELEGRAM_BOT_TOKEN` or `TELEGRAM_CHAT_ID` is not set.
+- Always send the notification when Telegram is configured. Do not skip based on whether there were changes — the user always wants to receive the current status.
+- Skip silently only if `TELEGRAM_BOT_TOKEN` or `TELEGRAM_CHAT_ID` is not set.
 - Keep messages under 4096 characters.
 - Use Markdown parse mode.
 - Do not send sensitive merchant-level details.

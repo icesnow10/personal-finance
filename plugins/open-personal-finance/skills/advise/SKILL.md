@@ -192,7 +192,7 @@ Return only the final formatted advisory text.
 - Do not emit JSON.
 - Do not return a structured object.
 - The output is the final message itself, ready for Telegram or direct display.
-- If another skill needs to send the advice, it should pass this formatted text through directly.
+- After generating the advisory text, always call `/notify` to send it via Telegram. Do not skip notification even if there were no changes — the user always wants to receive the current budget status.
 
 ## Rules
 
