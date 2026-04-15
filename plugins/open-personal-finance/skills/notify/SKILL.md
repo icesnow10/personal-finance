@@ -86,15 +86,9 @@ Where:
 
 ### After /heartbeat
 
-```text
-🫀 *Heartbeat {date}*
+Since `/heartbeat` runs `/advise`, which produces the full budget advisory text, use the **same behavior as "After /compile"**: send the `/advise` output directly as the Telegram message body.
 
-+{new_count} transações novas (+R$ {new_amount})
-💸 Despesa total: R$ {expenses}
-📉 Ritmo diário: R$ {daily_avg}/dia
-
-{top_warning_if_any}
-```
+Do NOT use a separate short template — the full advisory text from `/advise` is the heartbeat notification.
 
 ### After /settle
 

@@ -21,6 +21,5 @@ description: Fetch new Pluggy rows for the current month and recompile while pre
 - Deduplicate by Pluggy transaction `id` within each file.
 - Recompile to a flat `budget_*.json` that is a top-level JSON array of rows.
 - After recompiling, run `/audit` on `budget_*.json`. Audit auto-fixes issues and retries up to 3 times. Only stop if auto-fix exhausts all attempts.
-- After audit passes, run `/advise` to produce the formatted monthly budget message.
-- After `/advise`, run `/notify` if Telegram is configured. If Telegram is not configured, skip silently.
+- After audit passes, run `/advise` to produce the formatted monthly budget message. `/advise` already calls `/notify` internally — do NOT call `/notify` again from heartbeat.
 - The three raw files are the month source files.

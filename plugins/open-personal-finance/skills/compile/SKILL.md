@@ -61,7 +61,7 @@ Present uncategorized transactions for user review. After review, update the out
 
 ### 7. Optional notifications
 
-After the JSON is generated, `/advise` and `/notify` may run if Telegram is configured. If not configured, skip silently.
+After the JSON is generated, run `/advise` to produce the formatted budget message. `/advise` already calls `/notify` internally — do NOT call `/notify` again from compile.
 
 ## Output Rules
 

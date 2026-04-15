@@ -44,8 +44,8 @@ Skills form a pipeline orchestrated by `/compile`:
   │     └── /recognize  → provisions expected salary not yet arrived
   │     └── /provision  → estimates recurring expenses not yet charged
   └── /audit      → validates compiled budget schema, encoding, description enrichment
-  └── /advise     → generates budget insights
-  └── /notify     → sends insights via Telegram (if configured)
+  └── /advise     → generates budget insights, then calls /notify internally
+        └── /notify  → sends insights via Telegram (if configured)
 ```
 
 ### Data layout in the consuming project
