@@ -73,6 +73,6 @@ Return:
 - uncategorized rows left as `type: "unclassified"`
 - intentional RDB entries kept as normal rows, not separate grouped sections
 
-Do not emit totals, summaries, nested trees, bucket rollups, `transactions[]`, or any other wrapper structure. The output must stay as a top-level flat JSON array, and each transaction must preserve its stable `id`, `bank`, `account_number`, and installment fields (`totalInstallments`, `installmentNumber`) when present in the raw input.
+Do not emit totals, summaries, nested trees, bucket rollups, `transactions[]`, or any other wrapper structure. The output must stay as a top-level flat JSON array, and each transaction must preserve its stable `id`, `bank`, `account_number`, and installment fields (`totalInstallments`, `installmentNumber`) when present. In the raw Pluggy payload these live inside `metadata.totalInstallments` and `metadata.installmentNumber` — extract them to top-level fields in the budget row when `totalInstallments >= 2`.
 
 After classification, run `/learn` to persist any newly discovered patterns to `expenses_memory.md`.

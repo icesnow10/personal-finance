@@ -93,7 +93,7 @@ Transaction requirements:
 - expense rows must also include `bucket`, `category`, and `subcategory`
 - income, skipped, and uncategorized rows may leave `bucket`, `category`, and `subcategory` as `null`
 - provisioned income or expense items must set `provisional: true` directly on the row
-- installment transactions must carry `totalInstallments` and `installmentNumber` from the raw file when present
+- installment transactions must carry `totalInstallments` and `installmentNumber` in the compiled output. In the raw Pluggy payload these live inside `metadata.totalInstallments` and `metadata.installmentNumber`. Extract them to top-level fields in the budget row. Only include when the transaction is an installment (i.e. `totalInstallments >= 2`).
 
 Minimal example:
 

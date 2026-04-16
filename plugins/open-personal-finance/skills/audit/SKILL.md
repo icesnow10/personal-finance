@@ -33,17 +33,17 @@ Must be a top-level JSON array. Each row must have:
 | `_accountType` | string (`BANK` or `CREDIT`) | yes |
 | `_accountName` | string | yes |
 | `_accountNumber` | string | yes |
-| `totalInstallments` | number | no — only for installment transactions |
-| `installmentNumber` | number | no — only for installment transactions |
+
+Raw files preserve the full Pluggy API response. Installment data lives inside `metadata.totalInstallments` and `metadata.installmentNumber` (not at the top level). Other Pluggy fields (`currencyCode`, `category`, `categoryId`, `status`, `type`, `operationType`, `merchant`, `createdAt`, `updatedAt`, etc.) are also present and should not be removed or flagged.
 
 Checks:
 - File parses as valid JSON.
 - Top-level value is an array (not wrapped in an object).
 - Every row contains all required fields above.
 - No duplicate `id` values.
-- All `date` values match `YYYY-MM-DD` format.
+- All `date` values are valid ISO date strings (full ISO 8601 datetime from Pluggy, e.g. `2026-04-05T03:00:00.000Z`, is acceptable — do not reject these).
 - All `amount` values are numbers.
-- If `totalInstallments` is present, it must be a number >= 1 and `installmentNumber` must also be present (and vice versa). Both or neither.
+- If `metadata.totalInstallments` is present, `metadata.installmentNumber` must also be present (and vice versa).
 - **Account number validation**: every `_accountNumber` must match one of the `number` values in `pluggy_items.json` for the corresponding holder. Load `resources/{household}/pluggy_items.json`, build the set of valid account numbers, and flag any row whose `_accountNumber` is not in that set.
   - Auto-fix: look up the row's `accountId` in `pluggy_items.json` and replace `_accountNumber` with the correct `number`. If `accountId` is not found in `pluggy_items.json`, flag for user review.
 
