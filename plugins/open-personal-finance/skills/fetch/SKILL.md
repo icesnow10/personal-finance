@@ -20,6 +20,7 @@ resources/{household}/{YYYY-MM}/expenses/
 - Preserve Pluggy transaction `id` and `accountId`.
 - For installment transactions, preserve `totalInstallments` and `installmentNumber` from the Pluggy response. These fields come from `creditCardMetadata` in the API. If the transaction is not an installment, omit these fields.
 - Add household metadata like `_holder`, `_accountType`, `_accountName`, `_accountNumber`, and `_bank`.
+- **`_accountNumber` must come from `pluggy_items.json`**, not from the transaction payload. Look up the transaction's `accountId` in `pluggy_items.json` to find the matching account entry and use its `number` field. Never use `creditCardMetadata.cardNumber` as the account number — that field contains the last 4 digits of the physical/virtual card, which varies across cards on the same account.
 - Deduplicate by Pluggy transaction `id` within each file.
 
 ## Splitting logic

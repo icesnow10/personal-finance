@@ -6,7 +6,8 @@
       "Bash(python -c \"from bot import claude, handlers, credentials, scheduler, pluggy, main; print\\('OK'\\)\")",
       "Bash(node -e ':*)",
       "Read(//tmp/**)",
-      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); subs=[c for c in d.get\\('expenses',{}\\).get\\('categories',[]\\) if c.get\\('name',''\\).lower\\(\\)=='subscriptions']; print\\(json.dumps\\(subs, indent=2, ensure_ascii=False\\)\\)\")"
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); subs=[c for c in d.get\\('expenses',{}\\).get\\('categories',[]\\) if c.get\\('name',''\\).lower\\(\\)=='subscriptions']; print\\(json.dumps\\(subs, indent=2, ensure_ascii=False\\)\\)\")",
+      "Bash(xargs grep *)"
     ]
   }
 }

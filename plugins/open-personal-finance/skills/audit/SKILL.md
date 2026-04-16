@@ -44,6 +44,8 @@ Checks:
 - All `date` values match `YYYY-MM-DD` format.
 - All `amount` values are numbers.
 - If `totalInstallments` is present, it must be a number >= 1 and `installmentNumber` must also be present (and vice versa). Both or neither.
+- **Account number validation**: every `_accountNumber` must match one of the `number` values in `pluggy_items.json` for the corresponding holder. Load `resources/{household}/pluggy_items.json`, build the set of valid account numbers, and flag any row whose `_accountNumber` is not in that set.
+  - Auto-fix: look up the row's `accountId` in `pluggy_items.json` and replace `_accountNumber` with the correct `number`. If `accountId` is not found in `pluggy_items.json`, flag for user review.
 
 ### Compiled file: `budget_{month}_{year}.json`
 
@@ -79,6 +81,8 @@ Structural checks:
 - No top-level keys like `transactions`, `summary`, `budget_buckets`, `net`, or any wrapper object.
 - All `amount` values are numbers.
 - `type` is one of the four allowed values.
+- **Account number validation**: for non-provisional rows, `account_number` must match one of the `number` values in `pluggy_items.json`. Load `resources/{household}/pluggy_items.json`, build the set of valid account numbers, and flag any row whose `account_number` is not in that set and is not `null`/provisional.
+  - Auto-fix: find the corresponding raw transaction by `id` in `cc_open_bill.json`, `cc_closed_bill.json`, or `savings.json`, get its `accountId`, look it up in `pluggy_items.json`, and replace `account_number` with the correct `number`. If the raw transaction is not found or `accountId` is missing from `pluggy_items.json`, flag for user review.
 
 ## Description enrichment check (compiled file only)
 
@@ -171,6 +175,7 @@ Audit FAILED — {filename}: {N} issues found.
       - Invalid `bucket` value on expense → set to `null` and change `type` to `"unclassified"`.
       - Top-level object wrapper → extract the array value from the first array-typed key.
       - `U+FFFD` or mojibake in strings → repair using the raw file lookup or the mojibake table from the encoding checks section. Strip BOM from file start.
+      - Invalid `_accountNumber` or `account_number` → look up `accountId` in `pluggy_items.json` and replace with the correct `number`. If not resolvable, flag for user review.
       - Opaque description without enrichment → append ` ({category} - {subcategory})` or a specific label from `expenses_memory.md`/`income_memory.md`. Only for already-classified rows.
    3. Write the corrected file back.
    4. Re-run audit on the corrected file.
