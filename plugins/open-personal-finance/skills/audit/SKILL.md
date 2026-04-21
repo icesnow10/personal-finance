@@ -104,6 +104,30 @@ Auto-fix: look up the row's `category` and `subcategory` and append ` ({category
 
 Do not enrich `unclassified` rows — only enrich rows that already have a classification.
 
+## Bucket consistency check (compiled file only)
+
+Each `(category, subcategory)` pair in the compiled budget must have a single, consistent `bucket` value across all its rows. When the same pair appears with different buckets, the category leaks into multiple bucket lists in `budget_buckets`, and the Categorias card / bucket progress bars double-count it.
+
+Detection: group expense rows by `(category, subcategory)`. Flag any group whose rows have more than one distinct `bucket` value.
+
+```
+Row id="pluggy:abc": (Transportation, Ride-hailing) bucket=conforto, but other rows in the same pair have bucket=custos_fixos
+```
+
+Auto-fix: for each inconsistent pair, pick the majority bucket (or, when tied, the bucket declared for the category in `expenses_memory.md`'s Budget Buckets table) and rewrite all rows in that pair to match. Log the override with the row ids that were changed.
+
+## Foreign currency check (compiled file only)
+
+Pluggy returns foreign currency transactions (e.g. international CC purchases) with `amount` in the native currency and `amountInAccountCurrency` already converted to BRL. The compiled budget row must use the BRL value, not the native value.
+
+Detection: for each non-provisional row in the compiled budget, look up the matching raw row by `id` in `cc_open_bill.json`, `cc_closed_bill.json`, or `savings.json`. If the raw row has `currencyCode != "BRL"`, verify that the budget row's `amount` equals the raw row's `amountInAccountCurrency` (tolerance ≤ 0.01). Flag mismatches:
+
+```
+Row id="pluggy:abc": USD transaction recorded as 20 (native amount) instead of 105.36 (amountInAccountCurrency)
+```
+
+Auto-fix: replace the budget row's `amount` with the raw row's `amountInAccountCurrency`. Preserve the sign (refunds stay negative).
+
 ## Encoding checks (applies to both files)
 
 All string fields (`description`, `descriptionRaw`, `_holder`, `holder`, `category`, `subcategory`, etc.) must contain clean UTF-8 text. Check for:
@@ -177,6 +201,8 @@ Audit FAILED — {filename}: {N} issues found.
       - `U+FFFD` or mojibake in strings → repair using the raw file lookup or the mojibake table from the encoding checks section. Strip BOM from file start.
       - Invalid `_accountNumber` or `account_number` → look up `accountId` in `pluggy_items.json` and replace with the correct `number`. If not resolvable, flag for user review.
       - Opaque description without enrichment → append ` ({category} - {subcategory})` or a specific label from `expenses_memory.md`/`income_memory.md`. Only for already-classified rows.
+      - Foreign currency amount mismatch → replace `amount` with the raw `amountInAccountCurrency` (BRL value), preserving the sign. Log the correction.
+      - Inconsistent bucket for a `(category, subcategory)` pair → rewrite all rows in the pair to the majority bucket (or the memory-declared bucket when tied). Log row ids changed.
    3. Write the corrected file back.
    4. Re-run audit on the corrected file.
    5. Repeat up to **3 total attempts**. If audit still fails after 3 attempts, **STOP the pipeline**, present the remaining issues to the user, and ask how to proceed.

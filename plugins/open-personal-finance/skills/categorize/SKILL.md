@@ -64,6 +64,13 @@ Valid combinations by bucket. Use these as reference when classifying — do not
 | Estorno / refund | Negative transaction in the original category |
 | Reimbursements | Negative transaction in the corresponding category |
 | IOF (all types: compra internacional, ajuste a crédito, IOF de volta) | Negative expense in Shopping / Refund (IOF) under conforto bucket. Never classify as income |
+| Foreign currency transactions (`currencyCode != "BRL"`) | Use `amountInAccountCurrency` (already converted to BRL by Pluggy) as the row's `amount`. Never use raw `amount`, which is in the native currency. Example: Openai $20 USD → `amountInAccountCurrency` 105.36 → `amount: 105.36` in the budget row |
+
+## Bucket Invariants
+
+- Each category maps to **exactly one bucket**. Never emit two rows with the same `(category, subcategory)` pair but different `bucket` values. Downstream aggregators group by category name and will double-count a category that appears in multiple buckets.
+- `Transportation` (all subcategories — `Fuel`, `Ride-hailing`, `Tolls`, `Public Transit`, `Parking`) is always `custos_fixos`. Uber/99/Táxi rows are never `conforto`.
+- After classification, run a self-check: for each unique `(category, subcategory)` in the output, confirm all rows share the same bucket. If not, fix to match `resources/{household}/expenses_memory.md` before returning.
 
 ## Output
 

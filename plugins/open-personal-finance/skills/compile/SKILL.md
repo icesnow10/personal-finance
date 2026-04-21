@@ -66,6 +66,7 @@ After the JSON is generated, run `/advise` to produce the formatted budget messa
 ## Output Rules
 
 - All dates must use `YYYY-MM-DD`.
+- Foreign currency transactions: when the raw row has `currencyCode != "BRL"`, the budget row's `amount` must come from `amountInAccountCurrency` (BRL value already converted by Pluggy), never from the raw `amount` (native currency). Applies to CC purchases billed abroad (Openai USD, Apple.Com USD, Anthropic USD, etc).
 - Refunds stay in their original category as negative transactions.
 - Intentional large RDB entries may remain in `intentional_rdb_investments`, but they are not expense totals.
 - Do not double count credit card bill payments with the card charges themselves.
