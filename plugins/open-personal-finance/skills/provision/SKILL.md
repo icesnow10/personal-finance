@@ -58,6 +58,10 @@ Only provision categories with predictable recurring amounts. Read the specific 
 - **Check `resources/{household}/expenses_memory.md`** for cancelled subscriptions before provisioning — do not provision cancelled services
 - One-off annual charges should not be provisioned monthly
 
+### Reconciliation handoff
+
+Provisioning only *seeds* expected rows. When real transactions arrive (typically via `/heartbeat`), `/categorize` and `/recognize` run the reconciliation step that **decreases** a matching provisional's amount by the observed value, and **removes** it once the remainder falls to ≤ R$ 0,01. Keep provisional descriptions ending in ` - provisioned` and preserve stable ids (`manual-expense:*`, `manual:prov:*`, `manual-income:*-salary-prov`) so that step can match reliably across heartbeats.
+
 ## Output
 
 Returns a list of provisioned expense items with expected amounts, for `/compile` to merge into the report alongside actual expenses. Each provisioned item should include `bank` and `account_number` from the historical transaction it was based on (or `null` if unknown).

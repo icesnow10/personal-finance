@@ -57,6 +57,31 @@ Skip these to avoid double counting:
 
 **Cash-basis principle:** all income and expenses are accounted in the month the transaction posts. Never skip a transaction because it "belongs to" a prior month.
 
+## Reconciliation with Provisioned Income
+
+Provisional salary rows (`"provisional": true`, e.g. id `manual-income:michel-salary-prov`) represent income expected but not yet observed. When the real salary deposit lands, it must not double-count with the provision.
+
+### Matching rule
+
+A real income row matches a provisional salary row when:
+- Both have the same `holder`.
+- Real row's classification is `Income / Salary` (or whatever the provision's `subcategory` was) as defined in `income_memory.md`.
+- Real row's `amount` falls within the salary definition's expected range.
+
+### Adjustment
+
+For each real salary match:
+
+1. **Decrement** the provisional's `amount` by the real row's `amount`.
+2. If the result is **≤ 0.01**, **remove** the provisional row entirely (fully settled).
+3. If the result is still positive (partial advance, bonus split, etc.), keep the provisional with the reduced amount (still marked `provisional: true`) so the remaining expected deposit is still reflected in the monthly forecast.
+4. If the real amount **exceeds** the provisional (e.g. salary came in higher than expected), remove the provisional entirely — never flip the sign.
+5. One real salary row consumes at most one provisional per holder.
+
+Apply reconciliation after matching all real salary candidates for the month, so the largest/closest observed deposit wins first.
+
+Log each adjustment (provisional id, old amount, new amount, consumed by real id).
+
 ## Output
 
 Returns classified income items and skipped transfers for `/compile` to assemble into the final report. Each income item and skipped transfer preserves `bank` and `account_number` from the normalized input. Provisioned salary items should use the `bank` from the salary definition in `income_memory.md` (if available) or `null`.

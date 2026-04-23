@@ -13,5 +13,6 @@
       "Bash(cp src/pages/transactions-v2/index.tsx src/pages/transactions/index.tsx)",
       "Bash(rm -rf src/pages/transactions-v2)"
     ]
-  }
+  },
+  "enabledPlugins": {}
 }

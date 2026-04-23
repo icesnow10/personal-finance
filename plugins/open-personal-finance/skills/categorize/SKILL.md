@@ -72,6 +72,32 @@ Valid combinations by bucket. Use these as reference when classifying — do not
 - `Transportation` (all subcategories — `Fuel`, `Ride-hailing`, `Tolls`, `Public Transit`, `Parking`) is always `custos_fixos`. Uber/99/Táxi rows are never `conforto`.
 - After classification, run a self-check: for each unique `(category, subcategory)` in the output, confirm all rows share the same bucket. If not, fix to match `resources/{household}/expenses_memory.md` before returning.
 
+## Reconciliation with Provisioned Rows
+
+When a real expense lands in a partial month that already contains provisioned rows (`"provisional": true`, id prefix `manual-expense:` or `manual:prov:...`), reconcile so that provisioning does not double-count the observed spending.
+
+### Matching rule
+
+A real expense row matches a provisional row when **all** of these hold:
+- Provisional's `category` and `subcategory` equal the real row's `category` and `subcategory`.
+- Provisional's `holder` equals the real row's `holder`.
+- Provisional's description stem (text before ` - provisioned`) matches the real merchant pattern, using the same rules that would map both to the same memory entry. If the provisional was seeded from a specific merchant (e.g. `Cursor, Ai Powered Ide - provisioned`), it only matches real rows from that merchant — not any `Subscriptions / AI Tools` charge.
+- When no merchant stem is present (generic provisionals like `Nu Seguro Vida - provisioned`), match by `(category, subcategory, holder)` only.
+
+### Adjustment
+
+For each real expense row, find the first unmatched provisional that matches:
+
+1. **Decrement** the provisional's `amount` by the real row's `amount` (use absolute values; refunds/estornos increase the provisional back).
+2. If the resulting amount is **≤ 0.01** (rounding tolerance), **remove** the provisional row entirely.
+3. If the resulting amount is still positive (pocket remainder), keep the provisional row with the new reduced amount and leave `provisional: true`.
+4. A single real row consumes at most one provisional — if multiple provisionals could match, prefer the one whose amount is closest to (≥) the real amount, then fall back to the one with the largest remaining amount.
+5. Never create negative provisional amounts. Never let reconciliation turn a provisional into an income row.
+
+Apply reconciliation **after** classifying all real rows for the month, so every observed merchant is known before deciding which provisionals survive.
+
+Log each adjustment (`provisional id`, old amount, new amount, consumed by real `id`) so the user can trace changes.
+
 ## Output
 
 Return:
@@ -79,6 +105,7 @@ Return:
 - expense rows with `bucket`, `category`, and `subcategory` filled in
 - uncategorized rows left as `type: "unclassified"`
 - intentional RDB entries kept as normal rows, not separate grouped sections
+- surviving provisional rows with their reduced amounts (dropped provisionals are simply absent)
 
 Do not emit totals, summaries, nested trees, bucket rollups, `transactions[]`, or any other wrapper structure. The output must stay as a top-level flat JSON array, and each transaction must preserve its stable `id`, `bank`, `account_number`, and installment fields (`totalInstallments`, `installmentNumber`) when present. In the raw Pluggy payload these live inside `metadata.totalInstallments` and `metadata.installmentNumber` — extract them to top-level fields in the budget row when `totalInstallments >= 2`.
 
