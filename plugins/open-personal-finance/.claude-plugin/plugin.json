@@ -1,5 +1,5 @@
 {
   "name": "open-personal-finance",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Fetch transactions via Pluggy Open Finance, classify expenses, recognize income, and generate monthly budget reports."
 }
