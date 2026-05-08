@@ -14,27 +14,50 @@ Analyzes a compiled budget and generates insights in a strict, reusable pattern.
 
 ## Required Delivery Pattern
 
-The skill must always generate the same section order and section labels.
+The skill must **always send two separate Telegram messages** in this order:
 
-Use this exact pattern:
+1. **Leftover preamble** — short opener focused on what is still available to spend.
+2. **Full advisory** — the structured budget breakdown.
+
+The two messages are sent as independent `/notify` calls. Do not concatenate them.
+
+### Message 1 — Leftover preamble
+
+```text
+💚 R$ {leftover_total} ainda disponíveis pra gastar este mês
+
+🔵 Custos Fixos: R$ {cf_remaining} de folga
+🟠 Conforto: R$ {co_remaining} de folga
+🟢 Liberdade Financeira: cada R$ não gasto vira investimento (hoje +R$ {lf_above_target} acima do alvo)
+
+Quanto menos do leftover você usar, mais engorda a Liberdade Financeira.
+```
+
+Rules for the preamble:
+- `{leftover_total}` = sum of `(target − spent)` for Custos Fixos and Conforto, considering only positive remainders. Liberdade is **not** included in leftover — it is the destination, not a budget to spend.
+- If a bucket is already over target, show `R$ X acima` instead of `R$ Y de folga` for that line.
+- `{lf_above_target}` is positive when current Liberdade % exceeds 45% target. If under, show `R$ X abaixo do alvo` instead.
+- Keep this message short. It is the headline.
+
+### Message 2 — Full advisory
 
 ```text
 📊 Budget {Mes} {Ano}{partial_tag}
 
 💰 Receita: R$ {income}
-💸 Despesas: R$ {expenses}
+💸 Despesas: R$ {expenses_real} (+ R$ {expenses_prov} prov. = R$ {expenses_total})
 📈 Saldo: R$ {net}
 
 Orçamento por bucket:
-{emoji} Custos Fixos: {actual_pct}% — R$ {spent} de R$ {limit} ({bucket_tail})
-{emoji} Conforto: {actual_pct}% — R$ {spent} de R$ {limit} ({bucket_tail})
+{emoji} Custos Fixos: {actual_pct}% — R$ {spent} (+R$ {prov} prov.) de R$ {limit} ({bucket_tail})
+{emoji} Conforto: {actual_pct}% — R$ {spent} (+R$ {prov} prov.) de R$ {limit} ({bucket_tail})
 {emoji} Lib. Financeira: {actual_pct}% — R$ {available_to_invest} disponíveis p/ investir (o que não foi gasto vira liberdade financeira)
 
 💬 Momentum:
 {momentum_text}
 
 🔎 Top 10 Categorias (vs {MesAnterior}):
-1. {categoria}: R$ {valor} ({variacao})
+1. {bucket_emoji} {categoria}: R$ {valor} ({variacao})
 2. ...
 
 🏆 Destaques:
@@ -51,7 +74,7 @@ Orçamento por bucket:
 * ...
 ```
 
-Rules for this pattern:
+Rules for the full advisory:
 - Always keep this section order.
 - Always use these section titles exactly.
 - Always return all sections, even if some sections are short.
@@ -59,6 +82,19 @@ Rules for this pattern:
 - `Momentum` must be 1-2 sentences only.
 - `Destaques`, `Fique de olho`, and `Recomendações` should each contain 2-5 bullets when data supports it.
 - The text must be ready to send by Telegram without extra rewriting.
+- If `expenses_prov` is zero, omit the `(+ R$ X prov. = R$ Y)` suffix on the Despesas line. Same rule applies per bucket: omit `(+R$ X prov.)` when zero.
+
+### Top 10 — bucket emoji prefix
+
+Every Top 10 line starts with the emoji of the category's bucket:
+
+| Bucket | Emoji |
+|---|---|
+| `custos_fixos` | 🔵 |
+| `conforto` | 🟠 |
+| `liberdade_financeira` | 🟢 |
+
+Example: `1. 🔵 Housing: R$ 7.171,84 (▲6% · +R$ 412)`
 
 ## Analysis Logic
 
@@ -72,7 +108,7 @@ Build:
 
 Always compute and show:
 - Receita
-- Despesas
+- Despesas — format as `R$ {real} (+ R$ {prov} prov. = R$ {total})` when provisional expenses exist; if zero, show only `R$ {real}`.
 - Saldo
 
 Use rounded BRL formatting for display.
@@ -80,10 +116,13 @@ Use rounded BRL formatting for display.
 ### 3. Buckets
 
 For each bucket compute:
-- actual percentage of income
+- actual percentage of income (real + provisioned, since the % is what informs the bucket emoji)
 - target amount in BRL
-- actual spent amount in BRL
+- actual spent amount in BRL (real, non-provisional)
+- provisioned amount in BRL for this bucket (sum of `provisional: true` rows in the bucket)
 - remaining amount in BRL when applicable
+
+The bucket line shows real and provisioned amounts side by side so the user understands what is already locked in vs estimated.
 
 Statuses:
 - `green`: within 3 percentage points of target
@@ -135,35 +174,41 @@ Rules:
 
 ### 6. Destaques
 
-Highlight wins such as:
-- reimbursements received
-- category reductions
-- fewer extras than previous month
-- positive net
-- 100% categorized rows
-- buckets at or better than plan
+Highlight wins that the user would not see at a glance. Look for:
+- reimbursements received that materially reduced a category
+- categories that dropped meaningfully vs prior month after a known cost
+- subscriptions that were cancelled / not billed this month
+- installment series that just finished (one fewer recurring CC line going forward)
+- one-time costs from prior month that did not repeat
+- buckets running materially under target with no impending big expense
 
-Do not praise routine internal transfers or hidden technical artifacts.
+**Avoid trivial / always-true praise.** Do not list "X% categorizado", "saldo positivo", "bucket dentro do alvo" without context. Do not call out salary arrival or routine paycheck.
 
 ### 7. Fique de olho
 
-Flag risks such as:
-- low remaining margin in Conforto or Custos Fixos
-- salaries still provisioned
-- previous month had non-recurring extra income
-- high concentration in one category
-- many uncategorized rows
-- current pace likely to compress the rest of the month
+Flag non-obvious risks that the user would miss reading the dashboard. Prefer deep, specific lookouts. Look for:
+- installment series with many parcels remaining (e.g. "Rio Sul 4/5 — R$ 579/mês até setembro, total restante R$ 1.158")
+- recurring vendor whose value jumped vs prior months (utilities, condo reajuste, internet plan creep)
+- merchant concentration: a single vendor representing >15% of a bucket
+- foreign-currency charges that ballooned vs typical FX
+- new merchant appearing for the first time with material amount
+- pace projection: at current daily run-rate, which bucket would breach by month-end
+- annual / non-monthly subscriptions about to renew
+- reimbursements expected but not yet received (e.g. CARE PLUS, Venâncio) and their estimated value
+- category that quietly grew across the last 2-3 months without being noticed
+
+**Do not** flag salary still provisioned, do not flag uncategorized rows count, do not flag generic "watch discretionary".
 
 ### 8. Recomendações
 
-Generate direct next actions, not generic advice.
+Direct, specific actions tied to a number or a named transaction. Examples of the **right level of depth**:
 
-Examples:
-- control new discretionary spending in Conforto
-- monitor reimbursements still expected
-- cap daily new spending for remaining days
-- review a specific category if it is accelerating
+- "Cancelar Crunchyroll antes de 10/06 — R$ 178,90/mês com baixo uso comparado ao Apple TV+"
+- "Compras parceladas no Rio Sul totalizam R$ 1.158 restantes — evitar nova compra parcelada lá enquanto não fecha"
+- "Conta Vivo pulou de R$ 280 para R$ 320,93 — verificar se foi reajuste contratual ou serviço extra"
+- "Reembolso Care Plus pendente estimado em R$ 1.200 — cobrar até o fim do mês"
+
+**Do not** recommend: "classify pending transactions", "wait for salary", "limit discretionary spending", or any generic budgeting platitude.
 
 ### 9. Não categorizados
 
@@ -186,13 +231,12 @@ Count all rows with `"type": "unclassified"` in the compiled budget.
 
 ## Output
 
-Return only the final formatted advisory text.
+Return the two formatted message bodies (preamble + full advisory) as plain text.
 
 - Do not write any file.
 - Do not emit JSON.
 - Do not return a structured object.
-- The output is the final message itself, ready for Telegram or direct display.
-- After generating the advisory text, always call `/notify` to send it via Telegram. Do not skip notification even if there were no changes — the user always wants to receive the current budget status.
+- After generating both messages, call `/notify` **twice** — first with the leftover preamble, then with the full advisory. Do not concatenate them into a single message. Do not skip either notification even if there were no changes — the user always wants to receive the current budget status.
 
 ## Rules
 

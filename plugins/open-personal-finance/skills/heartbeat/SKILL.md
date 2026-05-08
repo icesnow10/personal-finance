@@ -21,6 +21,7 @@ description: Fetch new Pluggy rows for the current month and recompile while pre
 - Deduplicate by Pluggy transaction `id` within each file.
 - Recompile to a flat `budget_*.json` that is a top-level JSON array of rows.
 - **Reconcile provisionals with newly-observed reality.** Before writing the recompiled budget, walk every real (non-provisional) row and, per the rules in `/categorize` (expenses) and `/recognize` (income), reduce the matching provisional's amount by the observed value. Drop the provisional row when the remainder is ≤ R$ 0,01; otherwise keep it with the reduced amount. This prevents double-counting when a provisioned expense/salary lands as a real Pluggy transaction between heartbeats.
-- After recompiling, run `/audit` on `budget_*.json`. Audit auto-fixes issues and retries up to 3 times. Only stop if auto-fix exhausts all attempts.
+- After recompiling, scan `budget_*.json` for rows still marked `type: "unclassified"`. For each one, run `/classify` so it consults `expenses_memory.md` / `income_memory.md`, classifies the transaction, and persists any new merchant pattern to memory. Use `/classify` (delta-oriented) here instead of `/categorize` (whole-month batch) — heartbeat only processes new/changed rows.
+- After classification, run `/audit` on `budget_*.json`. Audit auto-fixes issues and retries up to 3 times. Only stop if auto-fix exhausts all attempts.
 - After audit passes, run `/advise` to produce the formatted monthly budget message. `/advise` already calls `/notify` internally — do NOT call `/notify` again from heartbeat.
 - The three raw files are the month source files.
