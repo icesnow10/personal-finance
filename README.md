@@ -12,6 +12,10 @@ Looking for the web dashboard? See [personal-finance-viewer](https://github.com/
 
 ## How it works
 
+There are two entry paths into the pipeline:
+
+### Full compile (cold start / fresh month)
+
 ```
   You say /compile
         |
@@ -22,13 +26,13 @@ Looking for the web dashboard? See [personal-finance-viewer](https://github.com/
     /recognize -----> identifies salary & income
         |
         v
-    /categorize ----> classifies every expense
+    /categorize ----> whole-month batch: classifies every expense
         |
         v
     /forecast ------> provisions partial months
         |
         v
-   budget_apr_2026.json  (flat array of classified transactions)
+   budget_{month}_{year}.json  (flat array of classified transactions)
         |
         v
     /advise --------> generates budget insights
@@ -39,6 +43,41 @@ Looking for the web dashboard? See [personal-finance-viewer](https://github.com/
         v
    personal-finance-viewer  (grouping, charts, totals)
 ```
+
+Used when there is no prior `budget_*.json` for the month, or to rebuild from scratch.
+`/categorize` is the **whole-month batch** classifier — it walks every expense row.
+
+### Heartbeat (incremental update — preserves prior classifications)
+
+```
+  You say /heartbeat
+        |
+        v
+    /fetch ---------> pulls new Pluggy rows, merges into raw files
+        |
+        v
+    recompile ------> carries old classifications into the new budget
+        |
+        v
+    /classify ------> delta-only: classifies residual unclassified rows,
+                      consults memory, persists new merchant patterns
+        |
+        v
+    /audit ---------> validates schema, auto-fixes (up to 3 retries)
+        |
+        v
+   budget_{month}_{year}.json  (updated, classifications preserved)
+        |
+        v
+    /advise --------> generates budget insights
+        |
+        v
+    /notify --------> sends alerts via Telegram
+```
+
+Used to refresh the current month without losing manual overrides or prior categorizations.
+`/classify` is the **delta-oriented** classifier — it only handles rows still marked
+`unclassified` after recompile.
 
 ---
 
@@ -93,9 +132,10 @@ The wizard creates your household folder, saves credentials, and runs the first 
 | **`/compile`** | The main command that orchestrates the full pipeline end-to-end. Runs `/fetch` -> `/recognize` -> `/categorize` -> `/forecast` -> `/advise` -> `/notify` in sequence. Produces the final `budget_{month}_{year}.json` flat file ready for the viewer. |
 | **`/fetch`** | Authenticates with Pluggy and pulls all BANK + CREDIT transactions for the target month. Writes three raw files: `cc_open_bill.json`, `cc_closed_bill.json`, and `savings.json`. Auto-detects account holders and metadata via the `/accounts` sub-skill. |
 | **`/recognize`** | Identifies salary deposits and income sources from savings account movements. Skips internal transfers between own accounts so they don't inflate totals. Uses rules from `income_memory.md` and calls `/learn` to persist any new patterns discovered. |
-| **`/categorize`** | Classifies every expense row with `bucket`, `category`, and `subcategory` using merchant patterns from `expenses_memory.md`. Handles refunds, special transactions, and flags anything it can't match as `unclassified`. Calls `/learn` to save newly discovered merchant mappings. |
+| **`/categorize`** | Whole-month batch classifier. Fills `bucket`, `category`, and `subcategory` on every expense row using merchant patterns from `expenses_memory.md`. Handles refunds, special transactions, and flags anything it can't match as `unclassified`. Calls `/learn` to save newly discovered merchant mappings. Called by `/compile`. |
+| **`/classify`** | Delta-oriented classifier. Classifies one or more specific transactions (passed inline or by reply), consults `expenses_memory.md` / `income_memory.md`, and persists any new merchant pattern back to memory. Called by `/heartbeat` for residual `unclassified` rows after recompile — never used for whole-month batches. |
 | **`/forecast`** | Provisions a partial month's budget so numbers are meaningful before the month ends. Combines salary provisioning (expected income not yet deposited) with recurring expense estimates (fixed costs not yet charged). Only runs when the target month is still open. |
-| **`/heartbeat`** | Fetches only new transactions from Pluggy and appends them to existing data. Re-runs the full classification pipeline without overwriting prior edits or user corrections, then calls `/advise` and `/notify` to deliver insights. Designed to run on a schedule (cron) or on-demand for mid-month updates. |
+| **`/heartbeat`** | Incremental update that fetches new Pluggy rows, merges them into the raw files, and recompiles the budget while preserving prior classifications. Runs `/classify` on residual unclassified rows, then `/audit` -> `/advise` -> `/notify`. Designed to run on a schedule (cron) or on-demand for mid-month updates. |
 | **`/settle`** | Closes the previous month by removing all provisional/estimated rows and locking the final numbers. Then triggers `/heartbeat` for the current month to keep it fresh. Best run at the start of each new month to finalize last month's budget. |
 | **`/audit`** | Validates the schema of both raw files and compiled budget output. Auto-fixes common issues like encoding, missing fields, and malformed entries, retrying up to 3 times. Called automatically by `/fetch` and `/heartbeat` to ensure data integrity. |
 | **`/learn`** | Detects new transaction patterns that aren't yet saved in memory files. Persists merchant-to-category mappings and income recognition rules so future months classify automatically. Called by `/categorize`, `/recognize`, and `/classify` after each run. |
