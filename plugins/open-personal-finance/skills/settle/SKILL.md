@@ -1,14 +1,26 @@
 ---
 name: settle
-description: Finalize the previous month and then run heartbeat for the current month.
+description: Finalize the previous month (strip provisionals) and then run heartbeat for the current month.
 ---
 
 # Settle
 
-## Rules
+Closes the previous month, then updates the current one.
 
-- Refresh the previous month from `transactions_pluggy_raw.json`.
-- Recompile the previous month as a complete flat `budget_*.json`.
-- Strip all provisional rows from the final closed month.
-- Then run `/heartbeat` for the current month, which should also trigger `/advise` and `/notify`.
-- Only use `transactions_pluggy_raw.json` as the month source file.
+## 1. Finalize the previous month
+
+Refresh from the raw files and recompile **with `--final`** to strip all provisional rows
+(a closed month must contain only real transactions):
+
+```
+node plugins/open-personal-finance/scripts/recompile.mjs --household {h} --month {prev YYYY-MM} --final
+node plugins/open-personal-finance/scripts/audit.mjs     --household {h} --month {prev YYYY-MM}
+```
+
+If `/recompile` prints any `unclassified` rows, run `/classify` on them and recompile again
+before auditing — the closed month should be fully classified.
+
+## 2. Heartbeat the current month
+
+Run `/heartbeat` for the current month (fetch → recompile → classify → audit → advise →
+notify). That produces and sends the current-month budget message.
