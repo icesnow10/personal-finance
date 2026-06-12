@@ -1,26 +1,34 @@
 ---
 name: settle
-description: Finalize the previous month (strip provisionals) and then run heartbeat for the current month.
+description: Finalize a target month (fetch fresh data, recompile with --final to strip provisionals) and then run heartbeat for the current month. Defaults to settling the previous month.
 ---
 
 # Settle
 
-Closes the previous month, then updates the current one.
+Closes a target month, then updates the current one.
 
-## 1. Finalize the previous month
+`{month}` is the month the user wants to settle (`YYYY-MM`). If the user does not specify
+one, default to the **previous** month.
 
-Refresh from the raw files and recompile **with `--final`** to strip all provisional rows
-(a closed month must contain only real transactions):
+## 1. Finalize the target month
+
+Run the compile pipeline for `{month}`, ending with `--final` so all provisional rows are
+stripped (a closed month must contain only real transactions):
 
 ```
-node plugins/open-personal-finance/scripts/recompile.mjs --household {h} --month {prev YYYY-MM} --final
-node plugins/open-personal-finance/scripts/audit.mjs     --household {h} --month {prev YYYY-MM}
+node plugins/open-personal-finance/scripts/fetch.mjs     --household {h} --month {month}
+node plugins/open-personal-finance/scripts/recompile.mjs --household {h} --month {month} --final
+node plugins/open-personal-finance/scripts/audit.mjs     --household {h} --month {month}
 ```
+
+The fetch matters: transactions that posted after the month's last heartbeat (late card
+charges, bill adjustments) only enter the closed month here.
 
 If `/recompile` prints any `unclassified` rows, run `/classify` on them and recompile again
-before auditing — the closed month should be fully classified.
+(still with `--final`) before auditing — the closed month should be fully classified.
 
 ## 2. Heartbeat the current month
 
-Run `/heartbeat` for the current month (fetch → recompile → classify → audit → advise →
-notify). That produces and sends the current-month budget message.
+If the settled month is not the current month, run `/heartbeat` for the current month
+(fetch → recompile → classify → audit → advise → notify). That produces and sends the
+current-month budget message. If the user settled the current month itself, skip this step.
