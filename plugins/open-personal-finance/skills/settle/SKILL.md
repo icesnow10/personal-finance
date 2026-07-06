@@ -18,18 +18,20 @@ stripped (a closed month must contain only real transactions):
 ```
 node plugins/open-personal-finance/scripts/fetch.mjs     --household {h} --month {month}
 node plugins/open-personal-finance/scripts/recompile.mjs --household {h} --month {month} --final
-node plugins/open-personal-finance/scripts/audit.mjs     --household {h} --month {month}
+node plugins/open-personal-finance/scripts/audit.mjs     --household {h} --month {month} --final
 ```
 
 The fetch matters: transactions that posted after the month's last heartbeat (late card
 charges, bill adjustments) only enter the closed month here.
 
-**Check for pending transactions before finalizing.** A settled (closed) month should contain
-only POSTED transactions. `/fetch` prints `PENDING credit transactions remaining: N`. If `N > 0`,
-the card bill is still settling — **run `/fetch` again** for `{month}` to pull the POSTED
-versions (fetch drops the stale PENDING ghosts each time). Repeat up to ~3 times until the count
-stops dropping. If some PENDING rows persist (Pluggy occasionally lags on older/installment
-charges), note the remaining count to the user and proceed — they are still on the statement.
+**Pending transactions in a closed month are an error.** A settled month must contain only
+`posted` rows. `/fetch` prints `PENDING credit transactions remaining: N`. If `N > 0`, first
+**run `/fetch` again** for `{month}` to pull the real POSTED versions (fetch drops the stale
+PENDING ghosts each time); repeat up to ~3 times until the count stops dropping. Then
+`audit.mjs --final` enforces the invariant: any row still `pending` (Pluggy lagged or dropped
+it) is flagged `PENDING_IN_CLOSED_MONTH` and normalized to `posted`. Audit prints each row it
+flips — review them, since a flipped row that Pluggy no longer returns may need removing via a
+fresh `/fetch` reconciliation.
 
 If `/recompile` prints any `unclassified` rows, run `/classify` on them and recompile again
 (still with `--final`) before auditing — the closed month should be fully classified.

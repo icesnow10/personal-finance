@@ -55,8 +55,10 @@ export function deriveSource(tx, holderFirst) {
 }
 
 // Budget-side amount: BANK debits are negative in Pluggy; flip so expenses are positive.
+// Coerce to Number so hand-entered rows with string amounts (e.g. "-35") stay numeric.
 export function budgetAmount(tx) {
-  return tx._accountType === 'BANK' ? -tx.amount : tx.amount;
+  const a = Number(tx.amount) || 0;
+  return tx._accountType === 'BANK' ? -a : a;
 }
 
 const OPAQUE = [
@@ -80,7 +82,9 @@ export function buildRow(tx, classification) {
   const holderFirst = firstNameLower(tx._holder);
   const desc = enrichDescription(tx);
   const row = {
-    id: tx.id,
+    // Hand-entered raw rows can lack an id; synthesize a stable manual: id from their content
+    // so preservation and audit (which require ids) stay deterministic across runs.
+    id: tx.id || `manual:${(tx.date || '').slice(0, 10)}:${(desc || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 28)}`,
     date: (tx.date || '').slice(0, 10),
     description: desc,
     holder: holderFirst,

@@ -27,6 +27,11 @@ function audit(rows) {
     if (typeof r.amount !== 'number') issues.push({ kind: 'BAD_AMOUNT', id: r.id });
     if (typeof r.description !== 'string') issues.push({ kind: 'BAD_DESC', id: r.id });
     if (!r.provisional && !/^\d{4}-\d{2}-\d{2}$/.test(r.date || '')) issues.push({ kind: 'BAD_DATE', id: r.id, date: r.date });
+    // A closed month (--final) must contain no pending rows: once the bill closes every
+    // charge is posted, so a lingering `pending` is a stale flag (or a row Pluggy dropped).
+    if (args.final && !r.provisional && r.status === 'pending') issues.push({ kind: 'PENDING_IN_CLOSED_MONTH', id: r.id });
+    // Income is a positive figure in the budget (never a negative/sign-flipped credit).
+    if (r.type === 'income' && typeof r.amount === 'number' && r.amount < 0) issues.push({ kind: 'INCOME_NEGATIVE', id: r.id });
     if (r.type === 'expense') {
       if (!r.bucket) issues.push({ kind: 'EXPENSE_NO_BUCKET', id: r.id });
       else if (!VALID_BUCKETS.has(r.bucket)) issues.push({ kind: 'BAD_BUCKET', id: r.id, bucket: r.bucket });
@@ -74,6 +79,15 @@ function autoFix(rows, issues) {
     const r = rows.find((x) => x.id === iss.id);
     if (!r) continue;
     r.amount = (r.amount < 0 ? -1 : 1) * Math.abs(iss.expected); fixed++;
+  }
+  // Closed-month invariant: normalize any lingering pending row to posted.
+  for (const iss of issues.filter((i) => i.kind === 'PENDING_IN_CLOSED_MONTH')) {
+    const r = rows.find((x) => x.id === iss.id);
+    if (r) { r.status = 'posted'; fixed++; }
+  }
+  for (const iss of issues.filter((i) => i.kind === 'INCOME_NEGATIVE')) {
+    const r = rows.find((x) => x.id === iss.id);
+    if (r) { r.amount = Math.abs(r.amount); fixed++; }
   }
   for (const iss of issues.filter((i) => i.kind === 'BUCKET_INCONSISTENT')) {
     const [cat, sub] = iss.pair.split('|');
