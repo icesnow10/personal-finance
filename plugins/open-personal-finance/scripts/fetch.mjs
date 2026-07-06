@@ -47,7 +47,25 @@ function enrich(tx, item, acc) {
   out._accountName = acc.name;
   out._accountNumber = acc.number;
   out._bank = item.bank;
+  // Explicit posted/pending marker for downstream (recompile/viewer). Pluggy uses
+  // status POSTED once a card bill closes; PENDING while the bill is still open.
+  out._status = out.status === 'POSTED' ? 'posted' : 'pending';
   return out;
+}
+
+// When a credit-card bill closes, Pluggy re-issues the transaction under a NEW id with
+// status POSTED, but the stale PENDING copy (old id) keeps coming back on subsequent
+// fetches. Deduping by id alone can't catch it, so drop any PENDING credit row that a
+// POSTED row already supersedes (same card + description + amount + date). Genuine still-
+// pending charges (no POSTED twin) are kept.
+function dropSupersededPending(rows) {
+  const key = (r) => `${r._accountNumber}|${r.description}|${r.amount}|${(r.date || '').slice(0, 10)}`;
+  const postedKeys = new Set(
+    rows.filter((r) => r._accountType === 'CREDIT' && r.status === 'POSTED').map(key),
+  );
+  return rows.filter(
+    (r) => !(r._accountType === 'CREDIT' && r.status === 'PENDING' && postedKeys.has(key(r))),
+  );
 }
 
 const apiKey = await auth();
@@ -70,10 +88,14 @@ const newIds = new Set(fetched.map((r) => r.id));
 const merged = [...fetched, ...prior.filter((r) => !newIds.has(r.id))];
 const seen = new Map();
 for (const r of merged) if (!seen.has(r.id)) seen.set(r.id, r);
-const deduped = [...seen.values()];
+const byId = [...seen.values()];
+
+// Identify closed bills and drop the stale PENDING duplicates they leave behind.
+const deduped = dropSupersededPending(byId);
+const removedGhosts = byId.length - deduped.length;
 
 writeJson(rawPath, deduped);
-console.error(`Wrote ${deduped.length} -> transactions_raw.json (was ${prior.length}, fetched ${fetched.length})`);
+console.error(`Wrote ${deduped.length} -> transactions_raw.json (was ${prior.length}, fetched ${fetched.length}, removed ${removedGhosts} superseded PENDING)`);
 
 const ccOpen = deduped.filter((r) => r._accountType === 'CREDIT' && r.status === 'PENDING');
 const ccClosed = deduped.filter((r) => r._accountType === 'CREDIT' && r.status === 'POSTED');
@@ -81,4 +103,5 @@ const savings = deduped.filter((r) => r._accountType === 'BANK');
 writeJson(path.join(monthDir, 'cc_open_bill.json'), ccOpen);
 writeJson(path.join(monthDir, 'cc_closed_bill.json'), ccClosed);
 writeJson(path.join(monthDir, 'savings.json'), savings);
-console.error(`Split -> cc_open=${ccOpen.length}, cc_closed=${ccClosed.length}, savings=${savings.length}`);
+console.error(`Split -> cc_open=${ccOpen.length} (PENDING), cc_closed=${ccClosed.length} (POSTED), savings=${savings.length}`);
+console.error(`PENDING credit transactions remaining: ${ccOpen.length}`);

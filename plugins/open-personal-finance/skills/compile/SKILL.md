@@ -14,12 +14,19 @@ Output is the canonical flat array in [SCHEMA.md](../../SCHEMA.md) at
 ```
 node plugins/open-personal-finance/scripts/fetch.mjs     --household {h} --month {YYYY-MM}
 node plugins/open-personal-finance/scripts/recompile.mjs --household {h} --month {YYYY-MM}
+node plugins/open-personal-finance/scripts/audit.mjs     --household {h} --month {YYYY-MM}
 ```
 
-1. **`/fetch`** → raw + split files.
+1. **`/fetch`** → raw + split files. Each row is tagged `_status` (`posted`/`pending`). When a
+   card bill closes, Pluggy re-issues its transactions as POSTED under new ids; fetch
+   **identifies those closed bills and removes the stale PENDING duplicates** they leave behind
+   (a PENDING credit row is dropped when a POSTED row with the same card/description/amount/date
+   already supersedes it). It prints `PENDING credit transactions remaining: N` — genuine
+   still-open charges are kept.
 2. **`/recompile`** → builds the canonical budget: auto-classifies expenses/income from
    `expenses_memory.md` / `income_memory.md`, preserves any prior classifications, parses
-   installment fields, enriches opaque descriptions. Prints rows left `unclassified`.
+   installment fields, enriches opaque descriptions, and carries the `status` (`posted`/`pending`)
+   onto every row. Prints rows left `unclassified`.
 3. **`/classify`** (or `/categorize` + `/recognize` for a first full pass) the `unclassified`
    rows so they consult memory, get classified, and persist new patterns. Re-run `/recompile`
    to apply the new patterns.
@@ -27,6 +34,7 @@ node plugins/open-personal-finance/scripts/recompile.mjs --household {h} --month
    fixed expenses as `provisional: true` rows. `/recompile` carries these forward and
    reconciles them as the real transactions post.
 5. **`/audit`** → `node .../audit.mjs --household {h} --month {YYYY-MM}` (auto-fixes, retries).
+   Audit always runs as the final step of every compile so the budget is validated on disk.
 6. **`/advise`** → generates and sends the two Telegram messages (it calls `/notify`).
 
 ## Reference

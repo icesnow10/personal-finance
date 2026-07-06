@@ -23,6 +23,7 @@ English 3-letter month (`jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec`).
 | `account_number` | string | Last digits; must exist in `pluggy_items.json` |
 | `source` | string | `Credit Card`, `Savings Account`, `Nubank Savings`, `Wise USD` |
 | `provisional` | boolean | `true` only for forecast rows; closed months are all `false` |
+| `status` | enum | `posted` \| `pending`. Credit charges are `pending` while the bill is open, `posted` once it closes; bank rows are always `posted`. Derived from Pluggy status by `fetch`/`recompile` |
 | `type` | enum | `expense` \| `income` \| `skipped` \| `unclassified` |
 | `amount` | number | BRL. Expenses positive; BANK debits sign-flipped; refunds negative |
 | `bucket` | enum/null | `custos_fixos` \| `conforto` \| `liberdade_financeira`; null for income/skipped |
@@ -44,3 +45,4 @@ Invariant: a `(category, subcategory)` pair must use **one** bucket everywhere. 
 - **Installment fields are mandatory on parcels** — without `installmentNumber`/`totalInstallments` the viewer's Parcelas card disappears for the month.
 - **Open credit-card bill** lists the whole cycle's installments with future scheduled dates; include them all (don't filter by date). By `/settle` they will have posted.
 - A new month's first Pluggy fetch can be incomplete — re-run `/fetch` if a fresh month returns suspiciously few card rows.
+- **Pending ghosts:** when a bill closes, Pluggy re-issues each charge as `posted` under a NEW id, so the old `pending` copy would linger as a duplicate. `fetch` drops any `pending` credit row that a `posted` row already supersedes (same card/description/amount/date). `/settle` re-fetches while `PENDING credit transactions remaining` stays above 0.

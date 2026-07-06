@@ -35,6 +35,9 @@ There are two entry paths into the pipeline:
    budget_{month}_{year}.json  (flat array of classified transactions)
         |
         v
+    /audit ---------> validates schema, auto-fixes (up to 3 retries)
+        |
+        v
     /advise --------> generates budget insights
         |
         v
@@ -129,15 +132,15 @@ The wizard creates your household folder, saves credentials, and runs the first 
 | Skill | Description |
 |---|---|
 | **`/onboard`** | Interactive setup wizard for new users. Creates the household folder structure, `.env.local` for credentials, and memory files for expense/income patterns. Optionally runs `/accounts` to auto-detect your connected banks if Pluggy credentials are already set. |
-| **`/compile`** | The main command that orchestrates the full pipeline end-to-end. Runs `/fetch` -> `/recognize` -> `/categorize` -> `/forecast` -> `/advise` -> `/notify` in sequence. Produces the final `budget_{month}_{year}.json` flat file ready for the viewer. |
-| **`/fetch`** | Authenticates with Pluggy and pulls all BANK + CREDIT transactions for the target month. Writes three raw files: `cc_open_bill.json`, `cc_closed_bill.json`, and `savings.json`. Auto-detects account holders and metadata via the `/accounts` sub-skill. |
+| **`/compile`** | The main command that orchestrates the full pipeline end-to-end. Runs `/fetch` -> `/recognize` -> `/categorize` -> `/forecast` -> `/audit` -> `/advise` -> `/notify` in sequence. `/audit` always runs so the budget is schema-validated on disk. Produces the final `budget_{month}_{year}.json` flat file ready for the viewer. |
+| **`/fetch`** | Authenticates with Pluggy and pulls all BANK + CREDIT transactions for the target month. Writes `transactions_raw.json` plus three split files: `cc_open_bill.json` (pending), `cc_closed_bill.json` (posted), and `savings.json`. Tags every row with a `posted`/`pending` status. When a card bill closes, Pluggy re-issues its charges as posted under new ids — fetch **identifies those closed bills and removes the stale pending duplicates** they leave behind, then reports `PENDING credit transactions remaining: N`. Auto-detects account holders and metadata via the `/accounts` sub-skill. |
 | **`/recognize`** | Identifies salary deposits and income sources from savings account movements. Skips internal transfers between own accounts so they don't inflate totals. Uses rules from `income_memory.md` and calls `/learn` to persist any new patterns discovered. |
 | **`/categorize`** | Whole-month batch classifier. Fills `bucket`, `category`, and `subcategory` on every expense row using merchant patterns from `expenses_memory.md`. Handles refunds, special transactions, and flags anything it can't match as `unclassified`. Calls `/learn` to save newly discovered merchant mappings. Called by `/compile`. |
 | **`/classify`** | Delta-oriented classifier. Classifies one or more specific transactions (passed inline or by reply), consults `expenses_memory.md` / `income_memory.md`, and persists any new merchant pattern back to memory. Called by `/heartbeat` for residual `unclassified` rows after recompile — never used for whole-month batches. |
 | **`/forecast`** | Provisions a partial month's budget so numbers are meaningful before the month ends. Combines salary provisioning (expected income not yet deposited) with recurring expense estimates (fixed costs not yet charged). Only runs when the target month is still open. |
 | **`/heartbeat`** | Incremental update that fetches new Pluggy rows, merges them into the raw files, and recompiles the budget while preserving prior classifications. Runs `/classify` on residual unclassified rows, then `/audit` -> `/advise` -> `/notify`. Designed to run on a schedule (cron) or on-demand for mid-month updates. |
-| **`/settle`** | Closes the previous month by removing all provisional/estimated rows and locking the final numbers. Then triggers `/heartbeat` for the current month to keep it fresh. Best run at the start of each new month to finalize last month's budget. |
-| **`/audit`** | Validates the schema of both raw files and compiled budget output. Auto-fixes common issues like encoding, missing fields, and malformed entries, retrying up to 3 times. Called automatically by `/fetch` and `/heartbeat` to ensure data integrity. |
+| **`/settle`** | Closes the previous month by removing all provisional/estimated rows and locking the final numbers. Checks for leftover `pending` transactions (an open bill still settling) and **re-fetches until none remain** before finalizing. Then triggers `/heartbeat` for the current month to keep it fresh. Best run at the start of each new month to finalize last month's budget. |
+| **`/audit`** | Validates the schema of both raw files and compiled budget output. Auto-fixes common issues like encoding, missing fields, and malformed entries, retrying up to 3 times. Called automatically at the end of `/compile`, `/heartbeat`, and `/settle` to ensure data integrity. |
 | **`/learn`** | Detects new transaction patterns that aren't yet saved in memory files. Persists merchant-to-category mappings and income recognition rules so future months classify automatically. Called by `/categorize`, `/recognize`, and `/classify` after each run. |
 | **`/advise`** | Analyzes the compiled budget and generates actionable insights. Compares actual spending vs targets, flags problem categories, highlights wins, and provides recommendations. Called automatically at the end of `/compile`. |
 | **`/notify`** | Sends budget insights and alerts to your Telegram chat. Reads `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` from `.env.local`. Skips silently if Telegram is not configured — fully optional. |
@@ -155,6 +158,7 @@ resources/
     pluggy_items.json       # auto-detected accounts metadata
     2026-04/
       expenses/
+        transactions_raw.json   # merged raw Pluggy pull (deduped)
         cc_open_bill.json       # CC pending transactions
         cc_closed_bill.json     # CC posted transactions
         savings.json            # checking/savings account
@@ -179,6 +183,7 @@ Rules:
 - No nested category trees in the result
 - No summaries or rollups — the viewer handles that
 - One flat array, one source of truth
+- Each row carries a `posted`/`pending` status; pending rows belong to a still-open card bill and reconcile to posted once it closes
 
 ---
 

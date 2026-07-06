@@ -24,6 +24,13 @@ node plugins/open-personal-finance/scripts/audit.mjs     --household {h} --month
 The fetch matters: transactions that posted after the month's last heartbeat (late card
 charges, bill adjustments) only enter the closed month here.
 
+**Check for pending transactions before finalizing.** A settled (closed) month should contain
+only POSTED transactions. `/fetch` prints `PENDING credit transactions remaining: N`. If `N > 0`,
+the card bill is still settling — **run `/fetch` again** for `{month}` to pull the POSTED
+versions (fetch drops the stale PENDING ghosts each time). Repeat up to ~3 times until the count
+stops dropping. If some PENDING rows persist (Pluggy occasionally lags on older/installment
+charges), note the remaining count to the user and proceed — they are still on the statement.
+
 If `/recompile` prints any `unclassified` rows, run `/classify` on them and recompile again
 (still with `--final`) before auditing — the closed month should be fully classified.
 

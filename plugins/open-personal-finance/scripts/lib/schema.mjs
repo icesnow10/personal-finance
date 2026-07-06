@@ -34,6 +34,13 @@ export function parseInstallment(desc) {
   return null;
 }
 
+// Normalize a raw Pluggy tx to a posted/pending marker. Credit charges are PENDING while
+// the bill is open and POSTED once it closes; bank rows are effectively always posted.
+export function normalizeStatus(tx) {
+  const s = (tx._status || tx.status || '').toString().toUpperCase();
+  return s === 'PENDING' ? 'pending' : 'posted';
+}
+
 export function firstNameLower(holder) {
   const f = (holder || '').split(' ')[0].toLowerCase();
   return f === 'carolina' ? 'carol' : f;
@@ -81,6 +88,7 @@ export function buildRow(tx, classification) {
     account_number: tx._accountNumber,
     source: deriveSource(tx, holderFirst),
     provisional: false,
+    status: normalizeStatus(tx),
     type: classification?.type || 'unclassified',
     amount: budgetAmount(tx),
     bucket: classification?.bucket ?? null,
