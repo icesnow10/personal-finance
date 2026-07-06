@@ -2,7 +2,23 @@
 // Usage: node audit.mjs --household <name> --month <YYYY-MM> [--resources <dir>]
 import path from 'node:path';
 import { parseArgs, resolvePaths, readJson, writeJson, budgetPath } from './lib/env.mjs';
-import { VALID_TYPES, VALID_BUCKETS } from './lib/schema.mjs';
+import { VALID_TYPES, VALID_BUCKETS, enrichDescription } from './lib/schema.mjs';
+
+// Detect + reverse mojibake: UTF-8 text that was decoded as latin-1/cp1252 and re-encoded
+// as UTF-8 (e.g. "Transferência" -> "TransferÃªncia"). Returns the repaired string, or null
+// when the input isn't confidently double-encoded — so it never mangles already-correct text
+// (a genuine "São"/"—" is left untouched). Applied per-string, which is what makes a mixed
+// file safe. Classic Windows cause: PowerShell Get-Content|Set-Content or Python open('w')
+// rewriting a UTF-8 JSON without forcing utf-8.
+function demojibake(s) {
+  if (typeof s !== 'string' || !s) return null;
+  const bytes = Buffer.from(s, 'latin1');
+  if (bytes.toString('latin1') !== s) return null;      // had chars > U+00FF -> not pure mojibake
+  const decoded = bytes.toString('utf8');
+  if (decoded === s || decoded.includes('�')) return null;
+  if (!Buffer.from(decoded, 'utf8').equals(bytes)) return null; // must round-trip exactly
+  return decoded;
+}
 
 const args = parseArgs(process.argv.slice(2));
 const { householdDir, monthDir, resultDir, month } = resolvePaths(args);
@@ -26,6 +42,7 @@ function audit(rows) {
     if (!VALID_TYPES.has(r.type)) issues.push({ kind: 'BAD_TYPE', id: r.id, type: r.type });
     if (typeof r.amount !== 'number') issues.push({ kind: 'BAD_AMOUNT', id: r.id });
     if (typeof r.description !== 'string') issues.push({ kind: 'BAD_DESC', id: r.id });
+    else if (demojibake(r.description) !== null) issues.push({ kind: 'MOJIBAKE', id: r.id });
     if (!r.provisional && !/^\d{4}-\d{2}-\d{2}$/.test(r.date || '')) issues.push({ kind: 'BAD_DATE', id: r.id, date: r.date });
     // A closed month (--final) must contain no pending rows: once the bill closes every
     // charge is posted, so a lingering `pending` is a stale flag (or a row Pluggy dropped).
@@ -68,6 +85,18 @@ function audit(rows) {
 
 function autoFix(rows, issues) {
   let fixed = 0;
+  // Repair mojibake by re-deriving the clean description from the matching raw tx (the source
+  // of truth is always clean UTF-8). Fall back to reversing the double-encode in place for rows
+  // with no raw twin (provisionals, manual: rows, or churned ids). NO_ENRICH re-adds any dropped
+  // "(category - subcategory)" suffix on the next attempt.
+  for (const iss of issues.filter((i) => i.kind === 'MOJIBAKE')) {
+    const r = rows.find((x) => x.id === iss.id);
+    if (!r) continue;
+    const raw = rawById.get(r.id);
+    const fromRaw = raw ? enrichDescription(raw) : null;
+    const clean = (fromRaw && demojibake(fromRaw) === null) ? fromRaw : demojibake(r.description);
+    if (clean && clean !== r.description) { r.description = clean; fixed++; }
+  }
   for (const iss of issues.filter((i) => i.kind === 'NO_ENRICH')) {
     const r = rows.find((x) => x.id === iss.id);
     if (!r) continue;
