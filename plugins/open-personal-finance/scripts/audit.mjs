@@ -1,7 +1,7 @@
 // Validate + auto-fix a month's budget against the canonical schema. Retries up to 3x.
 // Usage: node audit.mjs --household <name> --month <YYYY-MM> [--resources <dir>]
 import path from 'node:path';
-import { parseArgs, resolvePaths, readJson, writeJson, budgetPath } from './lib/env.mjs';
+import { parseArgs, resolvePaths, readJson, writeJson, budgetPath, prevMonth } from './lib/env.mjs';
 import { VALID_TYPES, VALID_BUCKETS, enrichDescription } from './lib/schema.mjs';
 
 // Detect + reverse mojibake: UTF-8 text that was decoded as latin-1/cp1252 and re-encoded
@@ -18,6 +18,80 @@ function demojibake(s) {
   if (decoded === s || decoded.includes('�')) return null;
   if (!Buffer.from(decoded, 'utf8').equals(bytes)) return null; // must round-trip exactly
   return decoded;
+}
+
+// ── Installment continuity ────────────────────────────────────────────────
+// A charge split into N parts posts one installment per month. When month M-1 carried
+// installment k/N of a plan and month M has no k+1/N (a lag: it hasn't posted yet), we
+// provision the successor so the month's projected total stays honest. We advance exactly
+// one step per plan per month (keyed off the HIGHEST installment seen in M-1, real OR
+// provisional) so chained provisionals don't over-project future installments.
+function instSlug(s) {
+  return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+}
+function instBase(desc) {
+  return (desc || '')
+    .replace(/\s*-\s*provisioned\s*$/i, '')   // drop the provisioned suffix
+    .replace(/\s*\d+\s*\/\s*\d+.*$/, '')       // drop " k/N" and anything after it
+    .replace(/\s*-?\s*parcela\s*$/i, '')       // drop a trailing "- Parcela" label
+    .trim();
+}
+function instFields(r) {
+  let n = r.installmentNumber, t = r.totalInstallments;
+  if (!Number.isInteger(n) || !Number.isInteger(t)) {
+    const m = (r.description || '').match(/(\d+)\s*\/\s*(\d+)/);
+    if (m) { n = +m[1]; t = +m[2]; }
+  }
+  return (Number.isInteger(n) && Number.isInteger(t) && t >= 2 && n >= 1 && n <= t) ? { n, t } : null;
+}
+// Mutates `rows`, appending provisional successor rows. Returns the rows it added.
+function provisionInstallments(rows, prevRows) {
+  // Previous month's plans -> highest installment seen (real or provisional).
+  const plans = new Map();
+  for (const r of prevRows) {
+    if (r.type !== 'expense' || !r.bucket || !r.category || !r.subcategory) continue;
+    const f = instFields(r);
+    if (!f) continue;
+    const base = instBase(r.description);
+    const key = `${base.toLowerCase()}|${f.t}|${r.holder || ''}`;
+    const cur = plans.get(key);
+    if (!cur || f.n > cur.n) plans.set(key, { n: f.n, t: f.t, base, row: r });
+  }
+  // Successors already present this month (real or provisional) — never double-provision.
+  const present = new Set();
+  for (const r of rows) {
+    if (r.type !== 'expense') continue;
+    const f = instFields(r);
+    if (!f) continue;
+    present.add(`${instBase(r.description).toLowerCase()}|${f.t}|${r.holder || ''}|${f.n}`);
+  }
+  const added = [];
+  for (const [key, plan] of plans) {
+    if (plan.n >= plan.t) continue;                 // plan already finished
+    const next = plan.n + 1;
+    if (present.has(`${key}|${next}`)) continue;     // successor already there
+    const src = plan.row;
+    const id = `manual:prov:inst:${instSlug(plan.base)}:${plan.t}:${next}:${src.holder || ''}`;
+    if (rows.some((r) => r.id === id)) continue;
+    added.push({
+      id,
+      description: `${plan.base} ${next}/${plan.t} - provisioned`,
+      holder: src.holder ?? null,
+      bank: src.bank ?? null,
+      account_number: src.account_number ?? null,
+      source: src.source ?? 'Credit Card',
+      provisional: true,
+      type: 'expense',
+      amount: src.amount,
+      bucket: src.bucket,
+      category: src.category,
+      subcategory: src.subcategory,
+      installmentNumber: next,
+      totalInstallments: plan.t,
+    });
+  }
+  for (const r of added) rows.push(r);
+  return added;
 }
 
 const args = parseArgs(process.argv.slice(2));
@@ -130,6 +204,21 @@ function autoFix(rows, issues) {
 }
 
 let rows = readJson(budgetFile, []);
+
+// Installment continuity: provision any next-installment that lagged out of this month.
+// Skipped for --final (a closed month is stripped of provisionals by /settle) and when the
+// previous month's budget doesn't exist yet.
+if (!args.final) {
+  const pm = prevMonth(month);
+  const prevRows = readJson(budgetPath(path.join(householdDir, pm, 'expenses', 'result'), pm), []);
+  const added = provisionInstallments(rows, prevRows);
+  if (added.length) {
+    console.error(`Installment audit: provisioned ${added.length} missing next-installment row(s):`);
+    for (const a of added) console.error(`  + ${a.description}  R$ ${a.amount}  [${a.holder}]`);
+    writeJson(budgetFile, rows);
+  }
+}
+
 for (let attempt = 1; attempt <= 3; attempt++) {
   const issues = audit(rows);
   if (issues.length === 0) {
