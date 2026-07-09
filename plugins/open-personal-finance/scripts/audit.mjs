@@ -21,41 +21,73 @@ function demojibake(s) {
 }
 
 // ── Installment continuity ────────────────────────────────────────────────
-// A charge split into N parts posts one installment per month. When month M-1 carried
-// installment k/N of a plan and month M has no k+1/N (a lag: it hasn't posted yet), we
-// provision the successor so the month's projected total stays honest. We advance exactly
-// one step per plan per month (keyed off the HIGHEST installment seen in M-1, real OR
-// provisional) so chained provisionals don't over-project future installments.
-function instSlug(s) {
-  return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
-}
-function instBase(desc) {
-  return (desc || '')
-    .replace(/\s*-\s*provisioned\s*$/i, '')   // drop the provisioned suffix
-    .replace(/\s*\d+\s*\/\s*\d+.*$/, '')       // drop " k/N" and anything after it
-    .replace(/\s*-?\s*parcela\s*$/i, '')       // drop a trailing "- Parcela" label
-    .trim();
-}
+// A charge split into N parts posts one installment per month. When a plan carried
+// installment k/N in a recent month and the month being audited has no k+1/N (a lag: it
+// hasn't posted yet), we provision the successor so the month's projected total stays honest.
+//
+// We scan the LAST TWO months (not just the previous one) so a plan that briefly dropped out
+// of M-1 is still projected, and we advance exactly one step per plan per month (keyed off the
+// HIGHEST installment seen for that plan, real OR provisional) so chained provisionals don't
+// over-project future installments.
+//
+// A plan is identified by merchant + holder + account + totalInstallments + amount (rounded to
+// the nearest real). Installment NUMBERS come from the structured `installmentNumber` /
+// `totalInstallments` fields — never re-parsed from text; the description is used ONLY to isolate
+// the merchant, by removing the exact known "k/N" token (not a regex guess). Merchant + amount
+// together are what keep concurrent plans apart: the amount separates two same-merchant plans
+// (the two "PG *DOREL" 10x at R$475.86 vs R$125.93), and the merchant separates two same-amount
+// plans (Pacheco vs Ven*Loja, both ~R$108.9 over 3x); rounding the amount keeps one plan together
+// despite cents-level rounding between installments (Labs A+ 42.32 then 42.31).
+// An installment row carries the structured fields installmentNumber (k) and totalInstallments
+// (N) — set once by recompile. We read those keys directly; we do NOT re-parse "k/N" out of the
+// free-text description (that would be guessing when the values are already structured).
 function instFields(r) {
-  let n = r.installmentNumber, t = r.totalInstallments;
-  if (!Number.isInteger(n) || !Number.isInteger(t)) {
-    const m = (r.description || '').match(/(\d+)\s*\/\s*(\d+)/);
-    if (m) { n = +m[1]; t = +m[2]; }
-  }
+  const n = r.installmentNumber, t = r.totalInstallments;
   return (Number.isInteger(n) && Number.isInteger(t) && t >= 2 && n >= 1 && n <= t) ? { n, t } : null;
 }
+// Merchant identity: the description with the KNOWN "k/N" token (from the structured installment
+// fields) and any provisioned suffix removed by an EXACT match — not a regex guess of the numbers.
+function instBase(r) {
+  let d = (r.description || '').replace(/\s*-\s*provisioned\s*$/i, '').trim();
+  const tok = `${r.installmentNumber}/${r.totalInstallments}`;
+  const i = d.indexOf(tok);
+  if (i >= 0) d = d.slice(0, i).trim();
+  return d.toLowerCase();
+}
+function instSlug(s) {
+  return (s || '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 32);
+}
+// Plan identity: merchant + holder + account + N + amount (rounded to the nearest real). The
+// merchant separates two different plans that share an amount (e.g. "Drogarias Pacheco" vs
+// "Drogaria Ven*Loja", both ~R$108.9 over 3x); the amount separates two concurrent same-merchant
+// plans (the two "PG *DOREL" 10x plans at R$475.86 vs R$125.93); rounding to the nearest real
+// keeps a single plan together despite cents-level rounding between installments (Labs A+ 42.32
+// then 42.31). Installment numbers come from the structured fields, never re-parsed from text.
+function instPlanKey(r, f) {
+  return `${instBase(r)}|${r.holder || ''}|${r.account_number || ''}|${f.t}|${Math.round(Number(r.amount) || 0)}`;
+}
+// Successor description: swap the installment number in the source text using the KNOWN
+// installmentNumber (an exact substring replace, not a pattern guess), then tag as provisioned.
+function instSuccessorDesc(src, next, total) {
+  const base = (src.description || '').replace(/\s*-\s*provisioned\s*$/i, '');
+  const oldTok = `${src.installmentNumber}/${total}`;
+  const swapped = base.includes(oldTok) ? base.replace(oldTok, `${next}/${total}`) : `${base} ${next}/${total}`;
+  return `${swapped} - provisioned`;
+}
 // Mutates `rows`, appending provisional successor rows. Returns the rows it added.
-function provisionInstallments(rows, prevRows) {
-  // Previous month's plans -> highest installment seen (real or provisional).
+// `prevMonths` is a list of prior months' row arrays to scan for active plans.
+function provisionInstallments(rows, prevMonths) {
+  // Recent plans -> highest installment seen (real or provisional) across the scanned months.
   const plans = new Map();
-  for (const r of prevRows) {
-    if (r.type !== 'expense' || !r.bucket || !r.category || !r.subcategory) continue;
-    const f = instFields(r);
-    if (!f) continue;
-    const base = instBase(r.description);
-    const key = `${base.toLowerCase()}|${f.t}|${r.holder || ''}`;
-    const cur = plans.get(key);
-    if (!cur || f.n > cur.n) plans.set(key, { n: f.n, t: f.t, base, row: r });
+  for (const prevRows of prevMonths) {
+    for (const r of prevRows) {
+      if (r.type !== 'expense' || !r.bucket || !r.category || !r.subcategory) continue;
+      const f = instFields(r);
+      if (!f) continue;
+      const key = instPlanKey(r, f);
+      const cur = plans.get(key);
+      if (!cur || f.n > cur.n) plans.set(key, { n: f.n, t: f.t, row: r });
+    }
   }
   // Successors already present this month (real or provisional) — never double-provision.
   const present = new Set();
@@ -63,7 +95,7 @@ function provisionInstallments(rows, prevRows) {
     if (r.type !== 'expense') continue;
     const f = instFields(r);
     if (!f) continue;
-    present.add(`${instBase(r.description).toLowerCase()}|${f.t}|${r.holder || ''}|${f.n}`);
+    present.add(`${instPlanKey(r, f)}|${f.n}`);
   }
   const added = [];
   for (const [key, plan] of plans) {
@@ -71,11 +103,11 @@ function provisionInstallments(rows, prevRows) {
     const next = plan.n + 1;
     if (present.has(`${key}|${next}`)) continue;     // successor already there
     const src = plan.row;
-    const id = `manual:prov:inst:${instSlug(plan.base)}:${plan.t}:${next}:${src.holder || ''}`;
+    const id = `manual:prov:inst:${instSlug(instBase(src))}:${src.holder || ''}:${src.account_number || ''}:${plan.t}:${Math.round(Number(src.amount) || 0)}:${next}`;
     if (rows.some((r) => r.id === id)) continue;
     added.push({
       id,
-      description: `${plan.base} ${next}/${plan.t} - provisioned`,
+      description: instSuccessorDesc(src, next, plan.t),
       holder: src.holder ?? null,
       bank: src.bank ?? null,
       account_number: src.account_number ?? null,
@@ -209,9 +241,10 @@ let rows = readJson(budgetFile, []);
 // Skipped for --final (a closed month is stripped of provisionals by /settle) and when the
 // previous month's budget doesn't exist yet.
 if (!args.final) {
-  const pm = prevMonth(month);
-  const prevRows = readJson(budgetPath(path.join(householdDir, pm, 'expenses', 'result'), pm), []);
-  const added = provisionInstallments(rows, prevRows);
+  const readMonthRows = (mm) => readJson(budgetPath(path.join(householdDir, mm, 'expenses', 'result'), mm), []);
+  const pm1 = prevMonth(month);
+  const pm2 = prevMonth(pm1);
+  const added = provisionInstallments(rows, [readMonthRows(pm1), readMonthRows(pm2)]);
   if (added.length) {
     console.error(`Installment audit: provisioned ${added.length} missing next-installment row(s):`);
     for (const a of added) console.error(`  + ${a.description}  R$ ${a.amount}  [${a.holder}]`);

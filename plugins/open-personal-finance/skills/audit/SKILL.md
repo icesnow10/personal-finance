@@ -23,24 +23,37 @@ to 3 times. Exits 0 when clean, non-zero if issues remain after 3 attempts.
 - Opaque transfer descriptions carry a `(Category - Subcategory)` suffix.
 - Each `(category, subcategory)` pair uses exactly one bucket.
 - No mojibake in `description` — no double-encoded UTF-8 (e.g. `TransferÃªncia`).
-- **Installment continuity** — every plan (`k/N`, `N ≥ 2`) that ran in the previous month has
-  its `k+1/N` successor present this month; a missing one is provisioned (see below).
+- **Installment continuity** — every plan (`k/N`, `N ≥ 2`) that ran in either of the last two
+  months has its `k+1/N` successor present this month; a missing one is provisioned (see below).
 
 ## Auto-fixes
 
 Description enrichment, FX correction, bucket consistency, and mojibake are fixed
 automatically and logged.
 
-**Installment provisioning.** A charge split into `N` parts posts one installment per month.
-The audit reads the previous month's budget (`resources/{household}/{prevMonth}/…`) and, for
-each plan that carried installment `k/N` there (`k < N`), checks that this month has `k+1/N`. If
-it lagged out (hasn't posted yet), a `provisional: true` expense is added — description
-`"<base> k+1/N - provisioned"`, stable id `manual:prov:inst:<base>:<N>:<k+1>:<holder>`, copying
-the source plan's amount/holder/bank/account/category/subcategory/bucket. It advances **one step
-per plan per month** (keyed off the highest installment seen in the prior month, real or
-provisional), is **idempotent**, and is **skipped for `--final`** (a closed month is stripped of
-provisionals by `/settle`). When the real `k+1/N` later posts, `/recompile` reconciles it away by
-`category|subcategory` like any other provisional. Mojibake is repaired by re-deriving the clean `description` from the
+**Installment provisioning.** A charge split into `N` parts posts one installment per month. The
+audit scans the **last two months' budgets** (`resources/{household}/{prevMonth}/…`) and, for each
+plan that carried installment `k/N` there (`k < N`), checks that this month has `k+1/N`. If it
+lagged out (hasn't posted yet), a `provisional: true` expense is added — copying the source plan's
+amount/holder/bank/account/category/subcategory/bucket, with the successor description derived by
+swapping the installment number in the source text (using the structured `installmentNumber` — not
+a text guess). Key points:
+
+- **Installment numbers come from the structured fields, never re-parsed from text.** A plan is
+  keyed by `merchant | holder | account | totalInstallments | round(amount)`. `installmentNumber` /
+  `totalInstallments` are read straight off the row; the description is used only to isolate the
+  merchant, by removing the exact known `k/N` token (not a regex guess). Merchant **and** amount are
+  both needed: the amount separates two concurrent *same-merchant* plans (the two `PG *DOREL` 10x at
+  R$475.86 vs R$125.93), and the merchant separates two *same-amount* plans (`Drogarias Pacheco` vs
+  `Drogaria Ven*Loja`, both ~R$108.9 over 3x). Rounding the amount keeps one plan together despite
+  cents rounding between installments (e.g. Labs A+ 42.32 → 42.31).
+- **Two-month lookback** so a plan that briefly dropped out of the immediately-previous month is
+  still projected.
+- Advances **one step per plan per month** (keyed off the highest installment seen for that plan,
+  real or provisional), is **idempotent**, and is **skipped for `--final`** (a closed month is
+  stripped of provisionals by `/settle`).
+- Stable id `manual:prov:inst:<merchant>:<holder>:<account>:<N>:<round(amount)>:<k+1>`. When the
+  real `k+1/N` later posts, `/recompile` reconciles the provisional away by `category|subcategory`. Mojibake is repaired by re-deriving the clean `description` from the
 matching raw transaction by `id` (the source of truth is always clean UTF-8), falling back to
 reversing the double-encode in place when there is no raw twin. If the script still fails after
 3 attempts, read the printed issues and resolve them by hand. Do not proceed downstream until
