@@ -144,6 +144,15 @@ The wizard creates your household folder, saves credentials, and runs the first 
 | **`/learn`** | Detects new transaction patterns that aren't yet saved in memory files. Persists merchant-to-category mappings and income recognition rules so future months classify automatically. Called by `/categorize`, `/recognize`, and `/classify` after each run. |
 | **`/advise`** | Analyzes the compiled budget and generates actionable insights. Compares actual spending vs targets, flags problem categories, highlights wins, and provides recommendations. Called automatically at the end of `/compile`. |
 | **`/notify`** | Sends budget insights and alerts to your Telegram chat. Reads `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` from `.env.local`. Skips silently if Telegram is not configured — fully optional. |
+
+---
+
+## Investments
+
+These skills run separately from the budget pipeline. They snapshot your investment portfolio from broker statements instead of bank transactions.
+
+| Skill | Description |
+|---|---|
 | **`/investments`** | Builds the monthly investment-portfolio snapshot. Reads the broker statements (screenshots + PDFs) under `{month}/investments/input/`, extracts one row per position, and writes the canonical flat `personal_finances_{month}.json`. A bundled script validates structure, currency rules, and totals. Separate from the budget pipeline. |
 | **`/assess`** | Sanity-checks an investment snapshot by comparing it month-over-month. Flags huge drops/spikes on an asset, positions that vanished, brand-new tickers, FX rates out of range, duplicate rows, and outsized whole-portfolio moves — grouped by severity. Advisory only (never edits data); the investments counterpart to `/audit`. Run it after `/investments`. |
 
