@@ -31,6 +31,12 @@ validates the result and writes it in the canonical shape. Reference output:
    ```
    Fix any `ERROR` in `_positions.json` and re-run. Cross-check the printed totals against the
    statements; review `WARN`s (unknown broker/product, type mismatch, duplicates).
+6. **Assess.** Once the snapshot is written, run [`/assess`](../assess/SKILL.md): it produces an
+   objective month-over-month diff (`assess_facts_{month}.json`), then you reason over it and write
+   the verdict (summary + `assess_{month}.md` + `assess_{month}.json`). Focus on real actions
+   (quantity moved), structural changes (a holding appeared/vanished), and integrity errors — not
+   price drift. Fix any integrity error at the source (`_positions.json`, then re-run steps 5–6) and
+   relay the summary before calling the month done.
 
 ## Row shape
 
@@ -63,10 +69,20 @@ quantidade, quantidade_usd, taxa_usd_brl, valor_atual, updated_at[, quantidade_e
 
 ## Morgan Stanley (Nubank RSUs)
 
-- **Vested** (sellable) → `product: "Ações (Vested Nubank)"`, `type: available`.
-- **Unvested** → `product: "Ações (Vesting Nubank)"`, `type: frozen`, `nome: "NU:NYSE"`.
-- **Pending Release** → separate row, `nome: "NU:NYSE - Pending Release"`, `type: frozen`.
-- `quantidade` = share count; `quantidade_usd` = **per-share USD price** (from the E*Trade screenshot); `valor_atual = quantidade × quantidade_usd × taxa_usd_brl`.
+- **Vested** (E*Trade "Sellable") → `product: "Ações (Vested Nubank)"`, `type: available`, `nome: "Vested"`.
+- **Unvested** (E*Trade "Unvested") → `product: "Ações (Unvested Nubank)"`, `type: frozen`, `nome: "Unvested"`.
+- **Pending Release** → **separate row**, `product: "Ações (Unvested Nubank)"`, `type: frozen`,
+  `nome: "Pending Release"`. It is the near-release subset of Unvested — the two frozen rows
+  (`Unvested` + `Pending Release`) together make up the Unvested total. Keep it broken out when
+  the E*Trade "Status" view shows it —
+  it's tracked as its own line so its month-over-month movement is visible. If a given month's screenshot
+  only shows the single "Unvested" total (the "Sell" view), record Unvested as one row and omit Pending
+  Release for that month.
+- `quantidade` = share count; `quantidade_usd` = **per-share USD price** (from the E*Trade screenshot);
+  `valor_atual = quantidade × quantidade_usd × taxa_usd_brl`.
+- Vested + Unvested (+ Pending Release) share counts should tie to the E*Trade "Total". The per-share
+  price is a live quote, so capture both holders' screenshots close in time — otherwise their per-share
+  USD differs slightly (same stock, quoted minutes apart), which is harmless but avoidable.
 
 ## Notes
 

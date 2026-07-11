@@ -31,7 +31,7 @@ const PRODUCTS = new Set([
   'Ações BRA', 'Ações US', 'Fundo Imobiliário', 'Tesouro Direto',
   'Renda Fixa', 'Renda Fixa US', 'Disponível para Investir',
   'Reserva de Emergência', 'ETF', 'Ações (Vested Nubank)',
-  'Ações (Vesting Nubank)', 'FGTS',
+  'Ações (Unvested Nubank)', 'FGTS',
 ]);
 const BROKERS_KNOWN = new Set(['BTG', 'Morgan Stanley', 'Caixa', 'Nubank', 'Wise', 'Nomad', 'Etrade']);
 const TYPES = new Set(['available', 'frozen']);
@@ -96,7 +96,7 @@ rows.forEach((r, i) => {
   }
 
   // Soft type/product coherence: FGTS and Vesting are frozen; the rest available.
-  const expectFrozen = r.product === 'FGTS' || /Vesting/.test(r.product || '');
+  const expectFrozen = r.product === 'FGTS' || /Unvested|Vesting/.test(r.product || '');
   if (expectFrozen && r.type !== 'frozen') warns.push(`${at}: product "${r.product}" usually type=frozen`);
   if (!expectFrozen && r.type === 'frozen') warns.push(`${at}: product "${r.product}" usually type=available`);
 
